@@ -1,3 +1,7 @@
+Tue Dec 17  4:15:36 2008  Brent Roman  <brent@mbari.org>
+
+        * eval.c:  streamlined rb_thread_restore_context() to ensure O(1) time
+
 Tue Dec 15  9:15:36 2008  Brent Roman  <brent@mbari.org>
 
         * eval.c:  factored rb_eval() into many separate non-inlined
