@@ -243,6 +243,30 @@ static int scope_vmode;
 VALUE (*ruby_sandbox_save)_((rb_thread_t));
 VALUE (*ruby_sandbox_restore)_((rb_thread_t));
 NODE* ruby_current_node;
+
+#if 0
+#define SET_CURRENT_SOURCE() (ruby_sourcefile = ruby_current_node->nd_file, \
+			      ruby_sourceline = nd_line(ruby_current_node))
+#else
+#define SET_CURRENT_SOURCE() ((void)0)
+#endif
+
+void
+ruby_set_current_source()
+{
+    if (ruby_current_node) {
+	ruby_sourcefile = ruby_current_node->nd_file;
+	ruby_sourceline = nd_line(ruby_current_node);
+    }
+}
+
+#ifdef MBARI_API
+#define SET_METHOD_SOURCE()  ruby_set_current_source()
+#else
+#define SET_METHOD_SOURCE()  (void)0
+#endif
+
+
 int ruby_safe_level = 0;
 /* safe-level:
    0 - strings from streams/environment/ARGV are tainted (default)
@@ -726,7 +750,7 @@ rb_attr(klass, id, read, write, ex)
     if (!name) {
 	rb_raise(rb_eArgError, "argument needs to be symbol or string");
     }
-    ruby_set_current_source(); /* for Method#__line__ */
+    SET_METHOD_SOURCE();
     len = strlen(name)+2;
     buf = ALLOCA_N(char,len);
     snprintf(buf, len, "@%s", name);
@@ -1173,22 +1197,6 @@ static rb_event_hook_t *event_hooks;
 static VALUE trace_func = 0;
 static int tracing = 0;
 static void call_trace_func _((rb_event_t,NODE*,VALUE,ID,VALUE));
-
-#if 0
-#define SET_CURRENT_SOURCE() (ruby_sourcefile = ruby_current_node->nd_file, \
-			      ruby_sourceline = nd_line(ruby_current_node))
-#else
-#define SET_CURRENT_SOURCE() ((void)0)
-#endif
-
-void
-ruby_set_current_source()
-{
-    if (ruby_current_node) {
-	ruby_sourcefile = ruby_current_node->nd_file;
-	ruby_sourceline = nd_line(ruby_current_node);
-    }
-}
 
 static void
 #ifdef HAVE_STDARG_PROTOTYPES
@@ -1940,8 +1948,12 @@ ev_const_defined(cref, id, self)
     return rb_const_defined(cref->nd_clss, id);
 }
 
-NOINLINE(static VALUE
-ev_const_get(cref, id, self))
+NOINLINE(static VALUE ev_const_get _((NODE *cref, ID id, VALUE self)));
+NOINLINE(static void eval_cvar_set _((NODE *node, VALUE result, int warn)));
+NOINLINE(static void eval_cdecl _((VALUE self, NODE *node, VALUE value)));
+
+static VALUE
+ev_const_get(cref, id, self)
     NODE *cref;
     ID id;
     VALUE self;
@@ -2268,8 +2280,8 @@ rb_copy_node_scope(node, rval)
     NODE *rval;
 {
     NODE *copy;
-    
-    ruby_set_current_source();  /* for Method#__line__ */
+
+    SET_METHOD_SOURCE();
     copy=NEW_NODE(NODE_SCOPE,0,rval,node->nd_next);
 
     if (node->nd_tbl) {
@@ -2959,23 +2971,21 @@ unknown_node(node)
     }
 }
 
-
 /*
-  functions factored out of rb_eval() to reduce its stack frame size
-*/
-NOINLINE(static VALUE eval_match2(self, node))
-  VALUE self;
-  NODE *node;
+ *  functions factored out of rb_eval() to reduce its stack frame size
+ */
+#define eval_body(n,type)  \
+NOINLINE(static type TOKEN_PASTE(eval_,n) _((VALUE self, NODE *node)));\
+static type TOKEN_PASTE(eval_,n)(self, node) VALUE self; NODE *node;
+
+eval_body(match2, VALUE)
 {
     VALUE l = rb_eval(self,node->nd_recv);
     VALUE r = rb_eval(self,node->nd_value);
     return rb_reg_match(l, r);
 }
 
-NOINLINE(static VALUE
-eval_match3(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(match3, VALUE)
 {
   VALUE r = rb_eval(self,node->nd_recv);
   VALUE l = rb_eval(self,node->nd_value);
@@ -2983,10 +2993,7 @@ eval_match3(self, node))
 }
 
 
-NOINLINE(static void
-eval_opt_n(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(opt_n, void)
 {
   int state;
   PUSH_TAG(PROT_LOOP);
@@ -3015,10 +3022,7 @@ eval_opt_n(self, node))
 }
 
 
-NOINLINE(static NODE *
-eval_when(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(when, NODE*)
 {
   do {
       NODE *tag = node->nd_head;
@@ -3045,10 +3049,7 @@ eval_when(self, node))
 }
 
 
-NOINLINE (static NODE *
-eval_case(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(case, NODE*)
 {
   VALUE val = rb_eval(self, node->nd_head);
   node = node->nd_body;
@@ -3083,10 +3084,7 @@ eval_case(self, node))
 }
 
 
-NOINLINE (static VALUE
-eval_while(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(while, VALUE)
 {
   int state;
   volatile VALUE result = Qnil;
@@ -3128,10 +3126,7 @@ while_out:
 }
 
 
-NOINLINE (static VALUE
-eval_until(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(until, VALUE)
 {
   int state;
   volatile VALUE result = Qnil;
@@ -3173,10 +3168,7 @@ eval_until(self, node))
 }
 
 
-NOINLINE (static VALUE
-eval_iter(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(iter, VALUE)
 {
   int state;
   volatile VALUE result = Qnil;
@@ -3220,10 +3212,7 @@ eval_iter(self, node))
 }
 
 
-NOINLINE (static VALUE
-eval_rescue(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(rescue, VALUE)
 {
     volatile VALUE e_info = ruby_errinfo;
     volatile int rescuing = 0;
@@ -3279,10 +3268,7 @@ eval_rescue(self, node))
 }
 
 
-NOINLINE (static VALUE
-eval_ensure(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(ensure, VALUE)
 {
   int state;
   volatile VALUE result = Qnil;
@@ -3305,10 +3291,7 @@ eval_ensure(self, node))
 }
 
 
-NOINLINE (static VALUE
-eval_dot(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(dot, VALUE)
 {
   VALUE beg = rb_eval(self, node->nd_beg);
   VALUE end = rb_eval(self, node->nd_end);
@@ -3316,10 +3299,7 @@ eval_dot(self, node))
 }
 
 
-NOINLINE (static VALUE
-eval_flip2(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(flip2, VALUE)
 {
   VALUE *flip = rb_svar(node->nd_cnt);
   if (!flip) rb_bug("unexpected local variable");
@@ -3334,10 +3314,7 @@ eval_flip2(self, node))
 }
 
 
-NOINLINE (static VALUE
-eval_flip3(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(flip3, VALUE)
 {
   VALUE *flip = rb_svar(node->nd_cnt);
   if (!flip) rb_bug("unexpected local variable");
@@ -3349,10 +3326,7 @@ eval_flip3(self, node))
 }
 
 
-NOINLINE (static VALUE
-eval_attrasgn(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(attrasgn, VALUE)
 {
   VALUE recv;
   int argc; VALUE *argv; /* used in SETUP_ARGS */
@@ -3378,10 +3352,7 @@ eval_attrasgn(self, node))
 }
 
 
-NOINLINE (static VALUE
-eval_call(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(call, VALUE)
 {
   VALUE recv;
   int argc; VALUE *argv; /* used in SETUP_ARGS */
@@ -3398,10 +3369,7 @@ eval_call(self, node))
 }
 
 
-NOINLINE (static VALUE
-eval_fcall(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(fcall, VALUE)
 {
   int argc; VALUE *argv; /* used in SETUP_ARGS */
   TMP_PROTECT;
@@ -3415,10 +3383,8 @@ eval_fcall(self, node))
   return rb_call(CLASS_OF(self),self,node->nd_mid,argc,argv,1,self);
 }
 
-NOINLINE (static VALUE
-eval_super(self, node))
-  VALUE self;
-  NODE *node;
+
+eval_body(super, VALUE)
 {
   int argc; VALUE *argv; /* used in SETUP_ARGS */
   TMP_PROTECT;
@@ -3463,10 +3429,7 @@ eval_super(self, node))
 }
 
 
-NOINLINE (static VALUE
-eval_scope(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(scope, VALUE)
 {
   int state;
   volatile VALUE result = Qnil;
@@ -3506,10 +3469,7 @@ eval_scope(self, node))
   return result;
 }
 
-NOINLINE (static VALUE
-eval_op_asgn1(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(op_asgn1, VALUE)
 {
   int argc; VALUE *argv; /* used in SETUP_ARGS */
   VALUE recv, val, tmp;
@@ -3539,10 +3499,7 @@ eval_op_asgn1(self, node))
 }
 
 
-NOINLINE (static VALUE
-eval_op_asgn2(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(op_asgn2, VALUE)
 {
   ID id = node->nd_next->nd_vid;
   VALUE recv, val, tmp;
@@ -3568,10 +3525,7 @@ eval_op_asgn2(self, node))
 }
 
 
-NOINLINE (static VALUE
-eval_hash(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(hash, VALUE)
 {
   NODE *list;
   VALUE hash = rb_hash_new();
@@ -3591,10 +3545,7 @@ eval_hash(self, node))
 }
 
 
-NOINLINE (static VALUE
-eval_array(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(array, VALUE)
 {
   VALUE ary;
   long i;
@@ -3609,10 +3560,7 @@ eval_array(self, node))
 }
 
 
-NOINLINE (static VALUE
-eval_slit(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(slit, VALUE)
 {
   VALUE str, str2;
   NODE *list = node->nd_next;
@@ -3654,10 +3602,7 @@ eval_slit(self, node))
 }
 
         
-NOINLINE (static void
-eval_defn(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(defn, void)
 {
   NODE *body,  *defn;
   VALUE origin = 0;
@@ -3703,10 +3648,7 @@ eval_defn(self, node))
 }
 
 
-NOINLINE (static void
-eval_defs(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(defs, void)
 {
   VALUE recv = rb_eval(self, node->nd_recv);
   VALUE klass;
@@ -3740,10 +3682,7 @@ eval_defs(self, node))
 }
 
 
-NOINLINE (static VALUE
-eval_class(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(class, VALUE)
 {
     VALUE super, klass, tmp, cbase;
     ID cname;
@@ -3799,10 +3738,7 @@ eval_class(self, node))
 }
 
 
-NOINLINE (static VALUE
-eval_module(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(module, VALUE)
 {
   VALUE module, cbase;
   ID cname;
@@ -3836,10 +3772,7 @@ eval_module(self, node))
 }
 
 
-NOINLINE (static VALUE
-eval_sclass(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(sclass, VALUE)
 {
   VALUE klass, result;
 
@@ -3861,10 +3794,7 @@ eval_sclass(self, node))
 }
 
 
-NOINLINE (static VALUE
-eval_defined(self, node))
-  VALUE self;
-  NODE *node;
+eval_body(defined, VALUE)
 {
     char buf[20];
     const char *desc = is_defined(self, node->nd_head, buf);
@@ -3872,17 +3802,18 @@ eval_defined(self, node))
 }
 
 
-NOINLINE (static void
-eval_cvar_set(result, node, bool))
-  VALUE result, bool;
+static void
+eval_cvar_set(node, result, warn)
   NODE *node;
+  VALUE result;
+  int warn;
 {
-  rb_cvar_set(cvar_cbase(), node->nd_vid, result, bool);
+  rb_cvar_set(cvar_cbase(), node->nd_vid, result, warn);
 }
 
 
-NOINLINE (static void
-eval_cdecl(self, node, result))
+static void
+eval_cdecl(self, node, result)
   VALUE self, result;
   NODE *node;
 {
@@ -3906,8 +3837,6 @@ again:
   result = Qnil;
   if (node) {
     ruby_current_node = node;
-    SET_CURRENT_SOURCE();
-
     switch (nd_type(node)) {
       case NODE_BLOCK:
 	while (node->nd_next) {
@@ -4187,12 +4116,12 @@ again:
 	    rb_raise(rb_eTypeError, "no class/module to define class variable");
 	}
         result = rb_eval(self, node->nd_value);
-        eval_cvar_set(result, node, Qtrue);
+        eval_cvar_set(node, result, Qtrue);
 	break;
 
       case NODE_CVASGN:
         result = rb_eval(self, node->nd_value);
-        eval_cvar_set(result, node, Qfalse);
+        eval_cvar_set(node, result, Qfalse);
 	break;
 
       case NODE_LVAR:
@@ -4794,7 +4723,7 @@ rb_longjmp(tag, mesg)
 	mesg = rb_exc_new(rb_eRuntimeError, 0, 0);
     }
 
-    ruby_set_current_source();
+    SET_METHOD_SOURCE();
     if (ruby_sourcefile && !NIL_P(mesg)) {
 	at = get_backtrace(mesg);
 	if (NIL_P(at)) {
@@ -10151,7 +10080,7 @@ rb_mod_define_method(argc, argv, mod)
     else {
 	rb_raise(rb_eArgError, "wrong number of arguments (%d for 1)", argc);
     }
-    ruby_set_current_source(); /* for Method#__line__ */
+    SET_METHOD_SOURCE();
     if (RDATA(body)->dmark == (RUBY_DATA_FUNC)bm_mark) {
 	node = NEW_DMETHOD(method_unbind(body));
     }
@@ -10184,6 +10113,7 @@ rb_mod_define_method(argc, argv, mod)
 }
 
 
+#if MBARI_API
 /*
  * call-seq:
  *    meth.__file__  => String  
@@ -10231,7 +10161,6 @@ method_source_line(VALUE method)
 }
 
 
-
 /*
  * call-seq:
  *    prc.__file__  => String  
@@ -10273,6 +10202,8 @@ proc_source_line(VALUE block)
       return INT2FIX( nd_line(node) );
     rb_raise(rb_eArgError, "native Proc");
 }
+
+#endif  /* MBARI_API */
 
 
 /*
@@ -10326,8 +10257,6 @@ Init_Proc()
     rb_define_method(rb_cProc, "to_s", proc_to_s, 0);
     rb_define_method(rb_cProc, "to_proc", proc_to_self, 0);
     rb_define_method(rb_cProc, "binding", proc_binding, 0);
-    rb_define_method(rb_cProc, "__file__", proc_source_file_name, 0);
-    rb_define_method(rb_cProc, "__line__", proc_source_line, 0);
 
     rb_define_global_function("proc", proc_lambda, 0);
     rb_define_global_function("lambda", proc_lambda, 0);
@@ -10348,8 +10277,6 @@ Init_Proc()
     rb_define_method(rb_cMethod, "owner", method_owner, 0);
     rb_define_method(rb_cMethod, "unbind", method_unbind, 0);
     rb_define_method(rb_mKernel, "method", rb_obj_method, 1);
-    rb_define_method(rb_cMethod, "__file__", method_source_file_name, 0);
-    rb_define_method(rb_cMethod, "__line__", method_source_line, 0);
 
     rb_cUnboundMethod = rb_define_class("UnboundMethod", rb_cObject);
     rb_undef_alloc_func(rb_cUnboundMethod);
@@ -10362,9 +10289,16 @@ Init_Proc()
     rb_define_method(rb_cUnboundMethod, "name", method_name, 0);
     rb_define_method(rb_cUnboundMethod, "owner", method_owner, 0);
     rb_define_method(rb_cUnboundMethod, "bind", umethod_bind, 1);
+    rb_define_method(rb_cModule, "instance_method", rb_mod_method, 1);
+    
+#if MBARI_API
     rb_define_method(rb_cUnboundMethod, "__file__", method_source_file_name, 0);
     rb_define_method(rb_cUnboundMethod, "__line__", method_source_line, 0);
-    rb_define_method(rb_cModule, "instance_method", rb_mod_method, 1);
+    rb_define_method(rb_cProc, "__file__", proc_source_file_name, 0);
+    rb_define_method(rb_cProc, "__line__", proc_source_line, 0);
+    rb_define_method(rb_cMethod, "__file__", method_source_file_name, 0);
+    rb_define_method(rb_cMethod, "__line__", method_source_line, 0);
+#endif
 }
 
 /*
@@ -11736,8 +11670,6 @@ rb_thread_select(max, read, write, except, timeout)
     if (except) *except = curr_thread->exceptfds;
     return curr_thread->select_value;
 }
-
-static int rb_thread_join _((rb_thread_t, double));
 
 static int
 rb_thread_join(th, limit)
@@ -13505,6 +13437,7 @@ rb_cont_call(argc, argv, cont)
 }
 
 
+#ifdef MBARI_API
 /*
  *  call-seq:
  *     cont.thread
@@ -13526,6 +13459,7 @@ rb_cont_thread(cont)
   cc_purge(th);
   return th->thread;
 }
+#endif
 
 
 struct thgroup {
@@ -13881,7 +13815,9 @@ Init_Thread()
     rb_undef_method(CLASS_OF(rb_cCont), "new");
     rb_define_method(rb_cCont, "call", rb_cont_call, -1);
     rb_define_method(rb_cCont, "[]", rb_cont_call, -1);
+#ifdef MBARI_API
     rb_define_method(rb_cCont, "thread", rb_cont_thread, 0);
+#endif
     rb_define_global_function("callcc", rb_callcc, 0);
     rb_global_variable(&cont_protect);
 
