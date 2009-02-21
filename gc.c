@@ -603,7 +603,7 @@ stack_grow_direction(addr)
 # define STACK_UPPER(a, b) (rb_gc_stack_grow_direction > 0 ? a : b)
 #endif
 
-int
+size_t
 ruby_stack_length(start, base)
     VALUE *start, **base;
 {
