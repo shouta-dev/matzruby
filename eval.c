@@ -989,7 +989,7 @@ rb_svar(cnt)
     ID id;
 
     if (!ruby_scope->local_tbl) return NULL;
-    if (cnt >= ruby_scope->local_tbl[0]) return NULL;
+    if ((ID)cnt >= ruby_scope->local_tbl[0]) return NULL;
     id = ruby_scope->local_tbl[cnt+1];
     while (vars) {
 	if (vars->id == id) return &vars->val;
@@ -3830,7 +3830,7 @@ rb_eval(self, node)
   VALUE self;
   NODE *node;
 {
-  VALUE result;
+  volatile VALUE result;
 
 again:
   CHECK_INTS;
@@ -11066,13 +11066,15 @@ rb_thread_restore_context(th, exit)
 #  endif
 #  if STACK_GROW_DIRECTION <= 0
       pos -= th->stk_len;
-      if (&v > pos) space=ALLOCA_N(VALUE, &v-pos);
+      if (&v > pos) 
+        (volatile void *)ALLOCA_N(VALUE, &v-pos);
 #  endif
 #  if !STACK_GROW_DIRECTION
     }else
 #  endif
 #if STACK_GROW_DIRECTION >= 0  /* stack grows upward */
-      if (&v < pos + th->stk_len) space=ALLOCA_N(VALUE, pos+th->stk_len - &v);
+      if (&v < pos + th->stk_len) 
+        (volatile void *)ALLOCA_N(VALUE, pos+th->stk_len - &v);
 #  endif
 
 #else  /* recursive O(n/1024) if extending stack > 1024 VALUEs */
