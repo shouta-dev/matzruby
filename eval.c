@@ -2,8 +2,8 @@
 
   eval.c -
 
-  $Author$
-  $Date$
+  $Author: brent $
+  $Date: 2009/01/15 07:41:46 $
   created at: Thu Jun 10 14:22:17 JST 1993
 
   Copyright (C) 1993-2003 Yukihiro Matsumoto
@@ -1259,10 +1259,10 @@ set_backtrace(info, bt)
 static void
 error_print()
 {
-    VALUE errat = Qnil;
+    volatile VALUE errat = Qnil;
     volatile VALUE eclass, e;
-    const char * einfo;
-    long elen;
+    const char * volatile einfo;
+    volatile long elen;
 
     if (NIL_P(ruby_errinfo)) return;
 
@@ -2743,7 +2743,7 @@ call_trace_func(event, node, self, id, klass)
     NODE * volatile node_save;
     VALUE srcfile;
     const char *event_name;
-    rb_thread_t th = curr_thread;
+    volatile rb_thread_t th = curr_thread;
 
     if (!trace_func) return;
     if (tracing) return;
@@ -3225,6 +3225,7 @@ eval_node_volatile(rescue, VALUE)
     else if (rescuing) {
 	if (rescuing < 0) {
 	    /* in rescue argument, just reraise */
+            result = Qnil;
 	}
 	else if (state == TAG_RETRY) {
 	    rescuing = state = 0;
@@ -3427,7 +3428,7 @@ eval_node(super, VALUE)
 }
 
 
-eval_node(scope, VALUE)
+eval_node_volatile(scope, VALUE)
 {
   int state;
   VALUE result;
@@ -5189,56 +5190,49 @@ rb_yield_0(val, self, klass, flags, avalue)
 
     PUSH_ITER(block->iter);
     PUSH_TAG(lambda ? PROT_NONE : PROT_YIELD);
-    if ((state = EXEC_TAG()) == 0) {
-      redo:
+    switch (state = EXEC_TAG()) {
+      case TAG_REDO:
+	state = 0;
+	CHECK_INTS;
+      case 0:
 	if (nd_type(node) == NODE_CFUNC || nd_type(node) == NODE_IFUNC) {
-	    switch (node->nd_state) {
-	      case YIELD_FUNC_LAMBDA:
-		if (!avalue) {
-		    val = rb_ary_new3(1, val);
-		}
-		break;
-	      case YIELD_FUNC_AVALUE:
-		if (!avalue) {
-		    val = svalue_to_avalue(val);
-		}
-		break;
-	      default:
-		if (avalue) {
-		    val = avalue_to_svalue(val);
-		}
-		if (val == Qundef && node->nd_state != YIELD_FUNC_SVALUE)
-		    val = Qnil;
+	  switch (node->nd_state) {
+	    case YIELD_FUNC_LAMBDA:
+	      if (!avalue) {
+		  val = rb_ary_new3(1, val);
+	      }
+	      break;
+	    case YIELD_FUNC_AVALUE:
+	      if (!avalue) {
+		  val = svalue_to_avalue(val);
+	      }
+	      break;
+	    default:
+	      if (avalue) {
+		  val = avalue_to_svalue(val);
+	      }
+	      if (val == Qundef && node->nd_state != YIELD_FUNC_SVALUE)
+		  val = Qnil;
 	    }
 	    result = (*node->nd_cfnc)(val, node->nd_tval, self);
-	}
-	else {
+	 }else
 	    result = rb_eval(self, node);
-	}
-    }
-    else {
-	switch (state) {
-	  case TAG_REDO:
-	    state = 0;
-	    CHECK_INTS;
-	    goto redo;
-	  case TAG_NEXT:
-	    if (!lambda) {
-		state = 0;
-		result = prot_tag->retval;
-	    }
-	    break;
-	  case TAG_BREAK:
-	    if (TAG_DST()) {
-		result = prot_tag->retval;
-	    }
-	    else {
-		lambda = Qtrue;	/* just pass TAG_BREAK */
-	    }
-	    break;
-	  default:
-	    break;
-	}
+          break;
+	case TAG_NEXT:
+	  if (!lambda) {
+	      state = 0;
+	      result = prot_tag->retval;
+	  }
+	  break;
+	case TAG_BREAK:
+	  if (TAG_DST()) {
+	      result = prot_tag->retval;
+	  }
+	  else {
+	      lambda = Qtrue;	/* just pass TAG_BREAK */
+	  }
+	default:
+	  break;
     }
     POP_TAG();
     POP_ITER();
