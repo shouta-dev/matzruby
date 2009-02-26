@@ -1,8 +1,10 @@
-Wed Feb 25 00:01:19 2009  Brent Roman  <brent@mbari.org>
+Wed Feb 25 12:01:19 2009  Brent Roman  <brent@mbari.org>
 
         * gc.c:  default GC.limit=2e6*sizeof(VALUE)
         
         * eval.c:  added RB_GC_GUARDs to eval_slit() & more volatile tweaks
+        
+        * re.c:  removed unneeded volatile qualifier & copy in rb_regcomp()
         
         * version.h:  bumped date, MBARI version 7A --> 8A
 

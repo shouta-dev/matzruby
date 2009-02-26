@@ -3588,10 +3588,10 @@ eval_node(slit, VALUE)
       RB_GC_GUARD(str);  /* prevent tail call optimization here */
       return str2;
     case NODE_DREGX_ONCE:	/* regexp expand once */
-      RB_GC_GUARD(str);  /* ensure str remains "live" until this fn returns */
       str2 = rb_reg_new(RSTRING(str)->ptr, RSTRING(str)->len,
 			  node->nd_cflag);
       nd_set_type(node, NODE_LIT);
+      RB_GC_GUARD(str);  /* ensure str is not GC'd in rb_reg_new */
       return node->nd_lit = str2;
     case NODE_LIT:
       /* other thread may replace NODE_DREGX_ONCE to NODE_LIT */
@@ -4315,7 +4315,7 @@ module_setup(module, n)
     NODE *node = n->nd_body;
     int state;
     struct FRAME frame;
-    VALUE result = Qnil;
+    VALUE result;
     TMP_PROTECT;
 
     frame = *ruby_frame;
@@ -4846,14 +4846,12 @@ rb_make_exception(argc, argv)
     int argc;
     VALUE *argv;
 {
-    VALUE mesg;
+    VALUE mesg = Qnil;
     ID exception;
     int n;
 
-    mesg = Qnil;
     switch (argc) {
       case 0:
-	mesg = Qnil;
 	break;
       case 1:
 	if (NIL_P(argv[0])) break;
@@ -5529,7 +5527,7 @@ rb_iterate(it_proc, data1, bl_proc, data2)
     VALUE data2;
 {
     int state;
-    VALUE retval = Qnil;
+    VALUE retval;
     NODE *node = NEW_IFUNC(bl_proc, data2);
     VALUE self = ruby_top_self;
 
@@ -6070,9 +6068,10 @@ rb_call0(klass, recv, id, oid, argc, argv, body, flags)
 	    Data_Get_Struct(body->nd_cval, struct BLOCK, data);
 	    EXEC_EVENT_HOOK(RUBY_EVENT_CALL, data->body, recv, id, klass);
 	}
-	result = proc_invoke(body->nd_cval, rb_ary_new4(argc, argv), recv, klass);
+	result = proc_invoke(body->nd_cval, rb_ary_new4(argc,argv), recv,klass);
 	if (event_hooks) {
-	    EXEC_EVENT_HOOK(RUBY_EVENT_RETURN, ruby_current_node, recv, id, klass);
+	    EXEC_EVENT_HOOK(RUBY_EVENT_RETURN,
+                            ruby_current_node, recv, id, klass);
 	}
 	break;
 
@@ -6126,8 +6125,9 @@ rb_call0(klass, recv, id, oid, argc, argv, body, flags)
 
 		    i = node->nd_cnt;
 		    if (i > argc) {
-			rb_raise(rb_eArgError, "wrong number of arguments (%d for %d)",
-				 argc, i);
+			rb_raise(rb_eArgError, 
+                                 "wrong number of arguments (%d for %d)",
+                                 argc, i);
 		    }
 		    if (!node->nd_rest) {
 			NODE *optnode = node->nd_opt;
@@ -9664,7 +9664,7 @@ method_call(argc, argv, method)
     VALUE *argv;
     VALUE method;
 {
-    VALUE result = Qnil;	/* OK */
+    VALUE result;
     struct METHOD *data;
     int safe;
 
@@ -9959,12 +9959,9 @@ static VALUE
 bmcall(args, method)
     VALUE args, method;
 {
-    volatile VALUE a;
-    VALUE ret;
-
-    a = svalue_to_avalue(args);
-    ret = method_call(RARRAY(a)->len, RARRAY(a)->ptr, method);
-    a = Qnil; /* prevent tail call */
+    VALUE a = svalue_to_avalue(args);
+    VALUE ret = method_call(RARRAY(a)->len, RARRAY(a)->ptr, method);
+    RB_GC_GUARD(a);  /* ensure a is not GC'd during method_call */
     return ret;
 }
 
