@@ -1147,10 +1147,11 @@ static void scope_dup _((struct SCOPE *));
 } while (0)
 
 static VALUE rb_eval _((VALUE,NODE*));
-static VALUE eval _((VALUE,VALUE,VALUE,const char*,int));
+static VALUE eval _((VALUE,VALUE,volatile VALUE,const char* volatile,int));
 static NODE *compile _((VALUE, const char*, int));
 
-static VALUE rb_yield_0 _((VALUE, VALUE, VALUE, int, int));
+static VALUE rb_yield_0 
+               _((volatile VALUE, volatile VALUE, VALUE, int, volatile int));
 
 #if STACK_WIPE_SITES & 0x20
 #define wipeBeforeYield()  rb_gc_wipe_stack()
@@ -1166,7 +1167,7 @@ static VALUE rb_yield_0 _((VALUE, VALUE, VALUE, int, int));
 #define YIELD_FUNC_LAMBDA 3
 
 static VALUE rb_call _((VALUE,VALUE,ID,int,const VALUE*,int,VALUE));
-static VALUE module_setup _((VALUE,NODE*));
+static VALUE module_setup _((VALUE,NODE *volatile));
 
 static VALUE massign _((VALUE,NODE*,VALUE,int));
 static void assign _((VALUE,NODE*,VALUE,int));
@@ -1259,10 +1260,10 @@ set_backtrace(info, bt)
 static void
 error_print()
 {
-    volatile VALUE errat = Qnil;
+    VALUE errat = Qnil;
     volatile VALUE eclass, e;
-    const char * volatile einfo;
-    volatile long elen;
+    const char * einfo;
+    long elen;
 
     if (NIL_P(ruby_errinfo)) return;
 
@@ -3582,9 +3583,12 @@ eval_node(slit, VALUE)
   }
   switch (nd_type(node)) {
     case NODE_DREGX:
-      return rb_reg_new(RSTRING(str)->ptr, RSTRING(str)->len,
+      str2 = rb_reg_new(RSTRING(str)->ptr, RSTRING(str)->len,
 			  node->nd_cflag);
+      RB_GC_GUARD(str);  /* prevent tail call optimization here */
+      return str2;
     case NODE_DREGX_ONCE:	/* regexp expand once */
+      RB_GC_GUARD(str);  /* ensure str remains "live" until this fn returns */
       str2 = rb_reg_new(RSTRING(str)->ptr, RSTRING(str)->len,
 			  node->nd_cflag);
       nd_set_type(node, NODE_LIT);
@@ -4702,7 +4706,7 @@ rb_iter_break()
     break_jump(Qnil);
 }
 
-NORETURN(static void rb_longjmp _((int, VALUE)));
+NORETURN(static void rb_longjmp _((volatile int, volatile VALUE)));
 static VALUE make_backtrace _((void));
 
 static void
@@ -5068,10 +5072,12 @@ rb_need_block()
 
 static VALUE
 rb_yield_0(val, self, klass, flags, avalue)
-    VALUE val, self, klass;
-    int flags, avalue;
+    volatile VALUE val, self;
+    VALUE klass;
+    int flags;
+    volatile int avalue;
 {
-    NODE *node, *var;
+    NODE *var, *volatile node;
     volatile VALUE result = Qnil;
     volatile VALUE old_cref;
     volatile VALUE old_wrapper;
