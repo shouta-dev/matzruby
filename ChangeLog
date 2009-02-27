@@ -1,3 +1,9 @@
+Wed Feb 27 12:01:19 2009  Brent Roman  <brent@mbari.org>
+        
+        * rubysig.c:  added support for __anyPowerPC__
+        
+        * version.h:  bumped date
+
 Wed Feb 25 12:01:19 2009  Brent Roman  <brent@mbari.org>
 
         * gc.c:  default GC.limit=2e6*sizeof(VALUE)
