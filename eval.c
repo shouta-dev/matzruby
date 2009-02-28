@@ -3585,7 +3585,7 @@ eval_node(slit, VALUE)
     case NODE_DREGX:
       str2 = rb_reg_new(RSTRING(str)->ptr, RSTRING(str)->len,
 			  node->nd_cflag);
-      RB_GC_GUARD(str);  /* prevent tail call optimization here */
+      RB_GC_GUARD(str);  /* ensure str is not GC'd in rb_reg_new */
       return str2;
     case NODE_DREGX_ONCE:	/* regexp expand once */
       str2 = rb_reg_new(RSTRING(str)->ptr, RSTRING(str)->len,
