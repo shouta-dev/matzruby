@@ -10628,13 +10628,19 @@ static inline void
 stack_free(th)
     rb_thread_t th;
 {
-    if (th->stk_ptr) free(th->stk_ptr);
-    th->stk_ptr = 0;
+    if (th->stk_ptr) {
+      free(th->stk_ptr);
+      th->stk_ptr = 0;
+    }
 #ifdef __ia64
-    if (th->bstr_ptr) free(th->bstr_ptr);
-    th->bstr_ptr = 0;
+    if (th->bstr_ptr) {
+      free(th->bstr_ptr);
+      th->bstr_ptr = 0;
+    }
 #endif
 }
+
+#define THREAD_DATA(threadObject)  ((rb_thread_t)RDATA(threadObject)->data)
 
 static void
 thread_free(th)
@@ -10657,7 +10663,7 @@ rb_thread_check(data)
 	rb_raise(rb_eTypeError, "wrong argument type %s (expected Thread)",
 		 rb_obj_classname(data));
     }
-    return (rb_thread_t)RDATA(data)->data;
+    return THREAD_DATA(data);
 }
 
 static VALUE rb_thread_raise _((int, VALUE*, rb_thread_t));
@@ -13291,17 +13297,14 @@ rb_thread_atfork()
     curr_thread->prev = curr_thread;
 }
 
-
-static void
+static inline void
 cc_purge(cc)
     rb_thread_t cc;
-{
-    /* free continuation's stack if it has just died */
-    if (NIL_P(cc->thread)) return;
-    if (rb_thread_check(cc->thread)->status == THREAD_KILLED) {
-	cc->thread = Qnil;
-	rb_thread_die(cc);  /* can't possibly activate this stack */
-    }
+{  /* free continuation's stack if it has just died */
+  if (cc->thread != Qnil && THREAD_DATA(cc->thread)->status == THREAD_KILLED) {
+    cc->thread = Qnil;
+    rb_thread_die(cc);  /* can't possibly activate this stack */
+  }  
 }
 
 static void
@@ -13468,6 +13471,34 @@ rb_cont_call(argc, argv, cont)
     return Qnil;
 }
 
+
+#ifdef MBARI_API
+/*
+ *  call-seq:
+ *     cont.thread
+ *  
+ *  Returns the thread on which this continuation can be called
+ *  or nil if that thread has died
+ *
+ *     t = Thread.new {callcc{|c| $x=c}; sleep 5}
+ *     sleep 1
+ *     $x.thread                             #=> t
+ *     sleep 10
+ *     $x.thread                             #=> nil
+ *
+ *  <i>Only available when MBARI_API extentions are enabled at build time</i>
+ */
+static VALUE
+rb_cont_thread(cont)
+  VALUE cont;
+{
+  rb_thread_t th = THREAD_DATA(cont);
+  cc_purge(th);
+  return th->thread;
+}
+#endif
+
+
 void
 Init_Cont()
 {
@@ -13476,6 +13507,9 @@ Init_Cont()
     rb_undef_method(CLASS_OF(rb_cCont), "new");
     rb_define_method(rb_cCont, "call", rb_cont_call, -1);
     rb_define_method(rb_cCont, "[]", rb_cont_call, -1);
+#ifdef MBARI_API
+    rb_define_method(rb_cCont, "thread", rb_cont_thread, 0);
+#endif
     rb_define_global_function("callcc", rb_callcc, 0);
     rb_global_variable(&cont_protect);
     rb_provide("continuation.so");
