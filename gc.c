@@ -82,13 +82,115 @@ void *alloca ();
 
 #define T_ZOMBIE 0x3a
 
-static unsigned long malloc_increase = 0;
-static unsigned long malloc_limit = GC_MALLOC_LIMIT;
+static size_t malloc_increase = 0;
+static size_t malloc_limit = GC_MALLOC_LIMIT;
+static size_t unstressed_malloc_limit = GC_MALLOC_LIMIT;
+
 static void run_final();
 static VALUE nomem_error;
 static void garbage_collect();
 
-int ruby_gc_stress = 0;
+/*
+ *  call-seq:
+ *    GC.stress                 => true or false
+ *
+ *  returns current status of GC stress mode.
+ */
+
+static VALUE
+gc_stress_get(self)
+    VALUE self;
+{
+    return malloc_limit ? Qfalse : Qtrue;
+}
+
+/*
+ *  call-seq:
+ *    GC.stress = bool          => bool
+ *
+ *  updates GC stress mode.
+ *
+ *  When GC.stress = true, GC is invoked for all GC opportunity:
+ *  all memory and object allocation.
+ *
+ *  Since it makes Ruby very slow, it is only for debugging.
+ */
+
+static VALUE
+gc_stress_set(self, bool)
+    VALUE self, bool;
+{
+    rb_secure(2);
+    if (!RTEST(bool))
+      malloc_limit = unstressed_malloc_limit;
+    else if (malloc_limit > 0) {
+      unstressed_malloc_limit = malloc_limit;
+      malloc_limit = 0;
+    }
+    return bool;
+}
+
+#ifdef MBARI_API
+/*
+ *  call-seq:
+ *     GC.limit    => increase limit in bytes
+ *
+ *  Get the # of bytes that may be allocated before triggering
+ *  a mark and sweep by the garbarge collector to reclaim unused storage.
+ *
+ *  <i>Only available when MBARI_API extentions are enabled at build time</i>
+ */
+static VALUE gc_getlimit(VALUE mod)
+{
+  return ULONG2NUM(malloc_limit);
+}
+
+/*
+ *  call-seq:
+ *     GC.limit=   => updated increase limit in bytes
+ *
+ *  Set the # of bytes that may be allocated before triggering
+ *  a mark and sweep by the garbarge collector to reclaim unused storage.
+ *  Attempts to set the GC.limit= less than 0 will be ignored.
+ *
+ *     GC.limit=5000000   #=> 5000000
+ *     GC.limit           #=> 5000000
+ *     GC.limit=-50       #=> 5000000
+ *     GC.limit=0         #=> 0  #functionally equivalent to GC.stress=true
+ *
+ *  <i>Only available when MBARI_API extentions are enabled at build time</i>
+ */
+static VALUE gc_setlimit(VALUE mod, VALUE newLimit)
+{
+  long limit = NUM2LONG(newLimit);
+  rb_secure(2);
+  if (limit < 0) return gc_getlimit(mod);
+  malloc_limit = limit;
+  return newLimit;
+ }
+ 
+ 
+/*
+ *  call-seq:
+ *     GC.growth
+ *
+ *  Get # of bytes that have been allocated since the last mark & sweep
+ *
+ *  <i>Only available when MBARI_API extentions are enabled at build time</i>
+ */
+static VALUE gc_growth(VALUE mod)
+{
+  return ULONG2NUM(malloc_increase);
+}
+#endif
+
+/*
+ *  restore default malloc_limit
+ */
+void rb_gc_unstress(void)
+{
+  malloc_limit = unstressed_malloc_limit;
+}
 
 NORETURN(void rb_exc_jump _((VALUE)));
 
@@ -109,41 +211,6 @@ rb_memerror()
     rb_exc_raise(nomem_error);
 }
 
-/*
- *  call-seq:
- *    GC.stress                 => true or false
- *
- *  returns current status of GC stress mode.
- */
-
-static VALUE
-gc_stress_get(self)
-    VALUE self;
-{
-    return ruby_gc_stress ? Qtrue : Qfalse;
-}
-
-/*
- *  call-seq:
- *    GC.stress = bool          => bool
- *
- *  updates GC stress mode.
- *
- *  When GC.stress = true, GC is invoked for all GC opportunity:
- *  all memory and object allocation.
- *
- *  Since it makes Ruby very slow, it is only for debugging.
- */
-
-static VALUE
-gc_stress_set(self, bool)
-    VALUE self, bool;
-{
-    rb_secure(2);
-    ruby_gc_stress = RTEST(bool);
-    return bool;
-}
-
 void *
 ruby_xmalloc(size)
     long size;
@@ -155,7 +222,7 @@ ruby_xmalloc(size)
     }
     if (size == 0) size = 1;
 
-    if (ruby_gc_stress || (malloc_increase+size) > malloc_limit) {
+    if ((malloc_increase+=size) > malloc_limit) {
 	garbage_collect();
     }
     RUBY_CRITICAL(mem = malloc(size));
@@ -195,7 +262,9 @@ ruby_xrealloc(ptr, size)
     }
     if (!ptr) return xmalloc(size);
     if (size == 0) size = 1;
-    if (ruby_gc_stress) garbage_collect();
+    if ((malloc_increase+=size) > malloc_limit) {
+	garbage_collect();
+    }
     RUBY_CRITICAL(mem = realloc(ptr, size));
     if (!mem) {
 	garbage_collect();
@@ -445,7 +514,7 @@ rb_newobj()
     if (during_gc)
 	rb_bug("object allocation during garbage collection phase");
 
-    if (ruby_gc_stress || !freelist) garbage_collect();
+    if (!malloc_limit || !freelist) garbage_collect();
 
     obj = (VALUE)freelist;
     freelist = freelist->as.free.next;
@@ -2185,10 +2254,18 @@ Init_GC()
 {
     VALUE rb_mObSpace;
 
+#if !STACK_GROW_DIRECTION
+    rb_gc_stack_end = stack_grow_direction(&rb_mObSpace);
+#endif
     rb_mGC = rb_define_module("GC");
     rb_define_singleton_method(rb_mGC, "start", rb_gc_start, 0);
     rb_define_singleton_method(rb_mGC, "enable", rb_gc_enable, 0);
     rb_define_singleton_method(rb_mGC, "disable", rb_gc_disable, 0);
+#ifdef MBARI_API
+    rb_define_singleton_method(rb_mGC, "limit", gc_getlimit, 0);
+    rb_define_singleton_method(rb_mGC, "limit=", gc_setlimit, 1);
+    rb_define_singleton_method(rb_mGC, "growth", gc_growth, 0);
+#endif
     rb_define_singleton_method(rb_mGC, "stress", gc_stress_get, 0);
     rb_define_singleton_method(rb_mGC, "stress=", gc_stress_set, 1);
     rb_define_method(rb_mGC, "garbage_collect", rb_gc_start, 0);
