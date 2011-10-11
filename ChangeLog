@@ -1,3 +1,7 @@
+Mon Oct 11 17:55:00 2011  Brent Roman  <brent@mbari.org>
+        
+	* always includes GC.stress method, even if MBARI_API enabled
+        
 Mon Oct 10 23:15:00 2011  Brent Roman  <brent@mbari.org>
 
         * MBARI 8 patchset wrapup
