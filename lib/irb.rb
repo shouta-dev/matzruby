@@ -1,12 +1,15 @@
 #
 #   irb.rb - irb main module
-#   	$Release Version: 0.9.5 $
-#   	$Revision$
-#   	$Date$
-#   	by Keiju ISHITSUKA(keiju@ruby-lang.org)
+#   	$Release Version: 0.9 $
+#   	$Revision: 1.12 $
+#   	$Date: 2008/06/10 22:01:32 $
+#   	by Keiju ISHITSUKA(keiju@ishitsuka.com)
 #
 # --
 #
+#stores most recent exception -- brent@mbari.org 7/15/03
+#use __send__ rather than call method in output_value to avoid security error
+# -- brent@mbari.org 10/12/11
 #
 #
 require "e2mmap"
@@ -51,7 +54,7 @@ module IRB
   def IRB.start(ap_path = nil)
     $0 = File::basename(ap_path, ".rb") if ap_path
 
-    IRB.setup(ap_path)
+    IRB.setup(ap_path) unless IRB.conf[:PROMPT]
 
     if @CONF[:SCRIPT]
       irb = Irb.new(nil, @CONF[:SCRIPT])
@@ -65,13 +68,15 @@ module IRB
     trap("SIGINT") do
       irb.signal_handle
     end
-
-    begin
-      catch(:IRB_EXIT) do
-	irb.eval_input
+    catch(:IRB_EXIT) do
+      begin
+        irb.eval_input
+      rescue Exception
+        irb.log_exception
+        retry
+      ensure
+        irb_at_exit
       end
-    ensure
-      irb_at_exit
     end
 #    print "\n"
   end
@@ -84,12 +89,8 @@ module IRB
     throw :IRB_EXIT, ret
   end
 
-  def IRB.irb_abort(irb, exception = Abort)
-    if defined? Thread
-      irb.context.thread.raise exception, "abort then interrupt!!"
-    else
-      raise exception, "abort then interrupt!!"
-    end
+  def IRB.irb_abort(irb, exception = Abort.new("User Abort!!"))
+    irb.raise exception 
   end
 
   #
@@ -107,6 +108,17 @@ module IRB
     attr_reader :context
     attr_accessor :scanner
 
+    if defined? Thread
+      def raise exception
+        @context.thread.raise exception
+      end
+    end
+  
+    def log_exception    
+      @context.thread.exception=$! if @context.thread.respond_to? :exception
+      print $!.type, ": ", $!, "\n" 
+    end
+    
     def eval_input
       @scanner.set_prompt do
 	|ltype, indent, continue, line_no|
@@ -305,12 +317,11 @@ module IRB
       p
     end
 
-    def output_value
-      if @context.inspect?
-        printf @context.return_format, @context.last_value.inspect
-      else
-        printf @context.return_format, @context.last_value
-      end
+    def output_value      
+      displayMethod = @context.inspect_mode
+      displayMethod = :inspect unless 
+                      (lastVal = @context.last_value).respond_to?(displayMethod)
+      printf @context.return_format, @context.last_value.__send__(displayMethod)
     end
 
     def inspect
