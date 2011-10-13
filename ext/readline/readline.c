@@ -1,6 +1,9 @@
 /* readline.c -- GNU Readline module
    Copyright (C) 1997-2001  Shugo Maeda */
 
+// revised Oct 12, 2011 by brent@mbari.org
+//   allow other ruby threads to run while awaiting input
+
 #include "config.h"
 #include <errno.h>
 #include <stdio.h>
@@ -45,29 +48,14 @@ static ID completion_proc, completion_case_fold;
 static char **readline_attempted_completion_function(const char *text,
                                                      int start, int end);
 
-#ifdef HAVE_RL_EVENT_HOOK
-#ifdef DOSISH
-#define BUSY_WAIT 1
-#else
-#define BUSY_WAIT 0
-#endif
-
-static int readline_event(void);
 static int
-readline_event()
+readline_getc (ignored)
+  FILE *ignored;
 {
-#if BUSY_WAIT
-    rb_thread_schedule();
-#else
-    fd_set rset;
-
-    FD_ZERO(&rset);
-    FD_SET(fileno(rl_instream), &rset);
-    rb_thread_select(fileno(rl_instream) + 1, &rset, NULL, NULL, NULL);
-    return 0;
-#endif
+  VALUE string = rb_funcall (rb_stdin, rb_intern("sysread"), 1, INT2FIX(1));
+  return RSTRING(string)->ptr[0];  //single byte read
 }
-#endif
+
 
 static VALUE
 readline_readline(argc, argv, self)
@@ -830,9 +818,7 @@ Init_readline()
 #endif
 
     rl_attempted_completion_function = readline_attempted_completion_function;
-#ifdef HAVE_RL_EVENT_HOOK
-    rl_event_hook = readline_event;
-#endif
+    rl_getc_function = readline_getc;
 #ifdef HAVE_RL_CATCH_SIGNALS
     rl_catch_signals = 0;
 #endif
