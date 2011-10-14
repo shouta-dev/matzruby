@@ -92,6 +92,7 @@ static enum lex_state {
     EXPR_FNAME,			/* ignore newline, no reserved words. */
     EXPR_DOT,			/* right after `.' or `::', no reserved words. */
     EXPR_CLASS,			/* immediate after `class', no here document. */
+    EXPR_VALUE			/* alike EXPR_BEG but label is disallowed. */
 } lex_state;
 static NODE *lex_strterm;
 
@@ -267,7 +268,7 @@ static void fixup_nodes();
 	k__LINE__
 	k__FILE__
 
-%token <id>   tIDENTIFIER tFID tGVAR tIVAR tCONSTANT tCVAR
+%token <id>   tIDENTIFIER tFID tGVAR tIVAR tCONSTANT tCVAR tLABEL
 %token <node> tINTEGER tFLOAT tSTRING_CONTENT
 %token <node> tNTH_REF tBACK_REF
 %token <num>  tREGEXP_END
@@ -2504,6 +2505,14 @@ assoc		: arg_value tASSOC arg_value
 		    {
 			$$ = list_append(NEW_LIST($1), $3);
 		    }
+		| tLABEL arg_value
+		    {
+		    /*%%%*/
+			$$ = list_append(NEW_LIST(NEW_LIT(ID2SYM($1))), $2);
+		    /*%
+			$$ = dispatch2(assoc_new, $1, $2);
+		    %*/
+		    }
 		;
 
 operation	: tIDENTIFIER
@@ -3527,7 +3536,8 @@ arg_ambiguous()
 }
 
 #define IS_ARG() (lex_state == EXPR_ARG || lex_state == EXPR_CMDARG)
-#define IS_BEG() (lex_state == EXPR_BEG || lex_state == EXPR_MID || lex_state == EXPR_CLASS)
+#define IS_BEG() (lex_state == EXPR_BEG || lex_state == EXPR_MID || \
+                  lex_state == EXPR_VALUE || lex_state == EXPR_CLASS)
 
 static int
 yylex()
@@ -3584,6 +3594,7 @@ yylex()
 	  case EXPR_FNAME:
 	  case EXPR_DOT:
 	  case EXPR_CLASS:
+          case EXPR_VALUE:
 	    goto retry;
 	  default:
 	    break;
@@ -3766,7 +3777,7 @@ yylex()
 
       case '?':
 	if (lex_state == EXPR_END || lex_state == EXPR_ENDARG) {
-	    lex_state = EXPR_BEG;
+	    lex_state = EXPR_VALUE;
 	    return '?';
 	}
 	c = nextc();
@@ -4546,6 +4557,16 @@ yylex()
 		}
 	    }
 
+	    if ((lex_state == EXPR_BEG && !cmd_state) ||
+		lex_state == EXPR_ARG ||
+		lex_state == EXPR_CMDARG) {
+		if (peek(':') && !(lex_p + 1 < lex_pend && lex_p[1] == ':')) {
+		    lex_state = EXPR_BEG;
+		    nextc();
+		    yylval.id = rb_intern(tok());
+		    return tLABEL;
+		}
+	    }
 	    if (lex_state != EXPR_DOT) {
 		const struct kwtable *kw;
 
@@ -4567,7 +4588,7 @@ yylex()
 			    return kDO_BLOCK;
 			return kDO;
 		    }
-		    if (state == EXPR_BEG)
+		    if (state == EXPR_BEG || state == EXPR_VALUE)
 			return kw->id[0];
 		    else {
 			if (kw->id[0] != kw->id[1])
@@ -4582,6 +4603,7 @@ yylex()
 		lex_state == EXPR_DOT ||
 		lex_state == EXPR_ARG ||
 		lex_state == EXPR_CLASS ||
+                lex_state == EXPR_VALUE ||
 		lex_state == EXPR_CMDARG) {
 		if (cmd_state) {
 		    lex_state = EXPR_CMDARG;
