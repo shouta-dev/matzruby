@@ -12686,7 +12686,7 @@ rb_thread_start_0(fn, arg, th)
 #elif STACK_GROW_DIRECTION < 0
       (VALUE *)(ruby_frame+1);
 #else
-      (VALUE *)(ruby_frame+((VALUE *)(&arg)<rb_gc_stack_start))
+      (VALUE *)(ruby_frame+((VALUE *)(&arg)<rb_gc_stack_start));
 #endif
  
     if (THREAD_SAVE_CONTEXT(curr_thread)) {
