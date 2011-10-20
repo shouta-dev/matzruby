@@ -1,0 +1,37 @@
+#!/bin/bash
+# configure ruby 1.8.7p352 build for arm-linux -- 10/20/11 brent@mbari.org
+# for gcc x86 add:
+# -fno-stack-protector
+# to CFLAGS
+: ${CFLAGS:="-O2 -g"}
+: ${CXXFLAGS:=$CFLAGS}
+: ${ARMGCC:=/arm}
+: ${ARMPREFIX:=$ARMGCC/usr}
+: ${CC:=$ARMGCC/bin/gcc}
+: ${TARGETTOP:=${1-/opt/mbari}}
+[ -r Makefile ] && make MINIRUBY=miniruby distclean
+export CC CFLAGS CXXFLAGS
+rm -f config.cache configure && autoconf &&
+rb_cv_stack_grow_dir=-1 ac_cv_func_memcmp_working=yes \
+ac_cv_func_getpgrp_void=yes ac_cv_func_setpgrp_void=yes \
+configure --host=arm-unknown-linux --prefix=$TARGETTOP --disable-ipv6 \
+          --enable-mbari-api --enable-pthread --disable-ucontext $@ ||
+ exit 2
+echo 'Patching RUBY_*_LIB* in config.h for target'
+sed -e "s:\"$ARMPREFIX:\"$TARGETTOP:g" config.h >config.h.patched || {
+  echo "Failed to patch config.h"
+  exit 3
+}
+#collect the trash more often
+echo "#define GC_MALLOC_LIMIT 2000000" >> config.h.patched 
+mv -f config.h.patched config.h || exit 6
+
+echo 'Patching Makefile for cross compilation'
+sed -e "s:MINIRUBY = ruby:MINIRUBY = $PWD/miniruby:1" \
+        Makefile >Makefile.patched || {
+  echo "Failed to patch Makefile"
+  exit 3
+}
+mv -f Makefile.patched Makefile
+
+  echo "  $ arminstall       #to install ruby and core libaries"
