@@ -15,7 +15,7 @@ rm -f config.cache configure && autoconf &&
 rb_cv_stack_grow_dir=-1 ac_cv_func_memcmp_working=yes \
 ac_cv_func_getpgrp_void=yes ac_cv_func_setpgrp_void=yes \
 configure --host=arm-unknown-linux --prefix=$TARGETTOP --disable-ipv6 \
-          --enable-mbari-api --enable-pthread --disable-ucontext $@ ||
+          --enable-mbari-api --disable-pthread --disable-ucontext $@ ||
  exit 2
 echo 'Patching RUBY_*_LIB* in config.h for target'
 sed -e "s:\"$ARMPREFIX:\"$TARGETTOP:g" config.h >config.h.patched || {
