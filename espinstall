@@ -4,7 +4,8 @@
 #   coreOnly environment variable is set
 #
 make -j4 all
-sudo make install || exit 1
+sudo make install DESTDIR=$DESTDIR || exit 1
+sudo chown $USER .installed_list || exit 2
 [ -n "$coreOnly" ] || {
   echo "   Installing extensions required by MBARI ESP:"
   PATH=.:$PATH
