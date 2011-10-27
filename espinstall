@@ -5,7 +5,7 @@
 #
 make -j4 all
 sudo make install DESTDIR=$DESTDIR || exit 1
-sudo chown $USER .installed_list || exit 2
+sudo chown $USER .installed.list || exit 2
 [ -n "$coreOnly" ] || {
   echo "   Installing extensions required by MBARI ESP:"
   PATH=.:$PATH

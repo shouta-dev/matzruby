@@ -1404,12 +1404,12 @@ command_args	:  {
 open_args	: call_args
 		| tLPAREN_ARG  {lex_state = EXPR_ENDARG;} ')'
 		    {
-		        rb_warn("don't put space before argument parentheses");
+		        rb_warning("don't put space before argument parentheses");
 			$$ = 0;
 		    }
 		| tLPAREN_ARG call_args2 {lex_state = EXPR_ENDARG;} ')'
 		    {
-		        rb_warn("don't put space before argument parentheses");
+		        rb_warning("don't put space before argument parentheses");
 			$$ = $2;
 		    }
 		;
@@ -4222,7 +4222,7 @@ yylex()
 		c = tLPAREN_ARG;
 	    }
 	    else if (lex_state == EXPR_ARG) {
-		rb_warn("don't put space before argument parentheses");
+		rb_warning("don't put space before argument parentheses");
 		c = '(';
 	    }
 	}
