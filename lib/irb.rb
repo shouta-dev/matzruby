@@ -71,9 +71,6 @@ module IRB
     catch(:IRB_EXIT) do
       begin
         irb.eval_input
-      rescue Exception
-        irb.log_exception
-        retry
       ensure
         irb_at_exit
       end
@@ -114,9 +111,9 @@ module IRB
       end
     end
   
-    def log_exception    
-      @context.thread.exception=$! if @context.thread.respond_to? :exception
-      print $!.class, ": ", $!, "\n" 
+    def log_exception exc
+      @context.thread.exception=exc if @context.thread.respond_to? :exception=
+      print exc.class, ": ", exc, "\n" 
     end
     
     def eval_input
@@ -176,7 +173,7 @@ module IRB
 	  rescue Exception => exc
 	  end
 	  if exc
-	    print exc.class, ": ", exc, "\n"
+            log_exception exc
 	    if exc.backtrace[0] =~ /irb(2)?(\/.*|-.*|\.rb)?:/ && exc.class.to_s !~ /^IRB/
 	      irb_bug = true 
 	    else
@@ -200,7 +197,7 @@ module IRB
 		end
 	      end
 	    end
-	    print messages.join("\n"), "\n"
+	    print messages.join("\n"), "\n" if messages.size > 0
 	    unless lasts.empty?
 	      printf "... %d levels...\n", levels if levels > 0
 	      print lasts.join("\n")

@@ -164,12 +164,7 @@ module IRB
       begin
 	system_exit = false
 	catch(:IRB_EXIT) do
-          begin
-            irb.eval_input
-          rescue Exception
-            irb.log_exception
-            retry
-          end
+          irb.eval_input
 	end
       rescue SystemExit
 	system_exit = true
