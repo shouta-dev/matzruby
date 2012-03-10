@@ -11,6 +11,6 @@
 #
 
 module IRB
-  @RELEASE_VERSION = "0.9.5-mbari2"
-  @LAST_UPDATE_DATE = "2/29/12"
+  @RELEASE_VERSION = "0.9.5-mbari3"
+  @LAST_UPDATE_DATE = "3/9/12"
 end

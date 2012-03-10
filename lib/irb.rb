@@ -71,11 +71,13 @@ module IRB
     catch(:IRB_EXIT) do
       begin
         irb.eval_input
+      rescue ThreadError
+        irb.log_exception
+        retry
       ensure
         irb_at_exit
       end
     end
-#    print "\n"
   end
 
   def IRB.irb_at_exit
@@ -174,12 +176,8 @@ module IRB
 	  end
 	  if exc
             log_exception exc
-	    if exc.backtrace[0] =~ /irb(2)?(\/.*|-.*|\.rb)?:/ && exc.class.to_s !~ /^IRB/
-	      irb_bug = true 
-	    else
-	      irb_bug = false
-	    end
-	    
+	    irb_bug = 
+	      (exc.backtrace[0] =~ /irb(2)?(\/.*|-.*|\.rb)?:/ && exc.class.to_s !~ /^IRB/)	    
 	    messages = []
 	    lasts = []
 	    levels = 0
