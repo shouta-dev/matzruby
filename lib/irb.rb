@@ -72,6 +72,7 @@ module IRB
       begin
         irb.eval_input
       rescue ThreadError
+	3.times {Thread.pass}
         irb.log_exception
         retry
       ensure
@@ -172,6 +173,8 @@ module IRB
 	  rescue Interrupt => exc
 	  rescue SystemExit, SignalException
 	    raise
+	  rescue ThreadError => exc
+	    3.times {Thread.pass}
 	  rescue Exception => exc
 	  end
 	  if exc
