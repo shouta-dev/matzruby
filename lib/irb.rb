@@ -71,10 +71,10 @@ module IRB
     catch(:IRB_EXIT) do
       begin
         irb.eval_input
-      rescue ThreadError
-	3.times {Thread.pass}
-        irb.log_exception
-        retry
+      rescue Exception => err
+        3.times {Thread.pass}
+        irb.log_exception err
+        retry unless err.respond_to? :signm and err.signm=='SIGHUP'
       ensure
         irb_at_exit
       end
