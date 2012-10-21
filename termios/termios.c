@@ -223,7 +223,7 @@ termios_tcsetattr(io, opt, param)
     Check_Type(io,  T_FILE);
     Check_Type(opt, T_FIXNUM);
     if (CLASS_OF(param) != cTermios) {
-	char *type = rb_class2name(CLASS_OF(param));
+	const char *type = rb_class2name(CLASS_OF(param));
 	rb_raise(rb_eArgError, 
 		 "wrong argument type %s (expected Termios::Termios)", 
 		 type);
