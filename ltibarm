@@ -1,0 +1,8 @@
+# source this in the shell, then run armconfig and arminstall
+set -x
+ARMGCC=/ltibarm
+ARMPREFIX=~/ltib/rootfs/usr
+ARMHOST=arm-none-linux-gnueabi
+DESTDIR=~/ltib/ruby
+set +x
+export ARMGCC ARMPREFIX ARMHOST DESTDIR

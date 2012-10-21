@@ -1,5 +1,5 @@
 #!/bin/bash
-# configure ruby 1.8.7p352 build for arm-linux -- 10/20/11 brent@mbari.org
+# configure ruby 1.8.7p352 build for arm-linux -- 10/20/12 brent@mbari.org
 # for gcc x86 add:
 # -fno-stack-protector
 # to CFLAGS
@@ -7,15 +7,31 @@
 : ${CXXFLAGS:=$CFLAGS}
 : ${ARMGCC:=/arm}
 : ${ARMPREFIX:=$ARMGCC/usr}
+: ${ARMHOST:=arm-softfloat-linux}
 : ${CC:=$ARMGCC/bin/gcc}
 : ${TARGETTOP:=${1-/opt/mbari}}
 [ -r Makefile ] && make MINIRUBY=miniruby distclean
-export CC CFLAGS CXXFLAGS
+export CFLAGS CXXFLAGS
 rm -f config.cache configure && autoconf &&
+if [ ! -x miniruby ]; then
+  configure --enable-mbari-api &&
+  echo Building miniruby for this host
+  rm -f *.o && make -j4 CC=gcc miniruby || {
+    echo "could not build miniruby"
+    exit 8
+  }
+  rm *.o
+fi
+echo Reconfiguring RUBY build for $ARMHOST
+export CC
 rb_cv_stack_grow_dir=-1 ac_cv_func_memcmp_working=yes \
 ac_cv_func_getpgrp_void=yes ac_cv_func_setpgrp_void=yes \
-configure --host=arm-unknown-linux --prefix=$TARGETTOP --disable-ipv6 \
-          --enable-mbari-api --disable-pthread --disable-ucontext $@ ||
+LDFLAGS=-L${ARMPREFIX}/lib \
+CPPFLAGS=-I${ARMPREFIX}/include \
+RPATHFLAG=" -Wl,-R$TARGETTOP/lib" \
+configure --disable-option-checking --disable-rpath \
+   --host=$ARMHOST --prefix=$TARGETTOP --disable-ipv6 \
+   --enable-mbari-api --disable-pthread --disable-ucontext $@ ||
  exit 2
 echo 'Patching RUBY_*_LIB* in config.h for target'
 sed -e "s:\"$ARMPREFIX:\"$TARGETTOP:g" config.h >config.h.patched || {
