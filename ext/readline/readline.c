@@ -33,7 +33,7 @@ static VALUE mReadline;
 
 #define COMPLETION_PROC "completion_proc"
 #define COMPLETION_CASE_FOLD "completion_case_fold"
-static ID completion_proc, completion_case_fold;
+static ID completion_proc, completion_case_fold, sysread;
 
 #ifndef HAVE_RL_FILENAME_COMPLETION_FUNCTION
 # define rl_filename_completion_function filename_completion_function
@@ -52,7 +52,7 @@ static int
 readline_getc (ignored)
   FILE *ignored;
 {
-  VALUE string = rb_funcall (rb_stdin, rb_intern("sysread"), 1, INT2FIX(1));
+  VALUE string = rb_funcall (rb_stdin, sysread, 1, INT2FIX(1));
   return RSTRING(string)->ptr[0];  //single byte read
 }
 
@@ -744,6 +744,7 @@ Init_readline()
 
     completion_proc = rb_intern(COMPLETION_PROC);
     completion_case_fold = rb_intern(COMPLETION_CASE_FOLD);
+    sysread = rb_intern("sysread");
 
     mReadline = rb_define_module("Readline");
     rb_define_module_function(mReadline, "readline",
