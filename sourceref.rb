@@ -108,16 +108,16 @@ class SourceRef   #combines source file name and line number
     begin
       File.open(file) {|f|
         2.upto(firstLine+lineOffset) { f.readline; lineno+=1 }
-        1.upto(lineCount) { text += f.readline; lineno+=1 }
+        1.upto(lineCount) { text << f.readline; lineno+=1 }
       }
     rescue EOFError  # don't sweat EOF unless its before target line #
       if lineno < firstLine
-        raise $!,"--> Truncated ruby source file: #{self}"
+        raise $!,"Truncated ruby source file: #{self}"
       end
     rescue
-      raise $!,"--> Missing ruby source: #{self}"
+      raise $!,"Missing ruby source: #{self}"
     end
-    text
+    text.chomp!
   end
 
   class <<@@remoteStub = Object.new
@@ -183,7 +183,7 @@ class SourceRef   #combines source file name and line number
     begin
       load file
     rescue LoadError 
-      raise $!, "--> Missing ruby source fle: #{file}" 
+      raise $!, "Missing ruby source fle: #{file}" 
     end
   end
   
@@ -360,9 +360,9 @@ class Module
   
   def list(*args)
   # return first few lines of all files containing self.methods
-    result=""
-    sources.each{|srcFile| result+=srcFile.list(*args)}
-    result
+    result=[]
+    sources.each{|srcFile| result<<srcFile<<"\n"<<srcFile.list(*args)}
+    result.join "\n"
   end
 
 end
