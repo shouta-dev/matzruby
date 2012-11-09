@@ -95,7 +95,6 @@ class SourceRef   #combines source file name and line number
     return file+':'+line.to_s unless symbol
     file+':'+line.to_s+':in `'+symbol.to_s+"'"
   end
-  alias_method :inspect, :to_s
   
   def to_srcRef
     self
@@ -154,12 +153,16 @@ class SourceRef   #combines source file name and line number
     if disp=ENV["DISPLAY"]
       path = @@remote.remap(File.expand_path(file))
       if disp.length>1
-        neditArgs = ""
+        neditArgs = "-lm Ruby "
         neditArgs<< "-read " if readonly
         neditArgs<< "-line #{line} " if hasLine
-        neditArgs<< "-lm Ruby #{options} \"#{path}\""
-        return self if sys(
-   "PATH=~/bin:$PATH nohup redit #{neditArgs} >/dev/null || nedit #{neditArgs}")
+	neditArgs<<"#{options} " if options
+        return self if sys( <<-END
+	  PATH=~/bin:$PATH nohup redit #{neditArgs} "#{path}">/dev/null 2>&1 ||
+      	  NeditArgs="#{neditArgs}" Nedit \"#{path}\">/dev/null 2>&1 ||
+	  nedit #{neditArgs} \"#{path}\" &
+      	END
+        )
       end
       return self if
         sys("TERM=#{ENV["TERM"]} nano -m #{"-v " if readonly}#{
@@ -291,23 +294,23 @@ class Module
         src = methodGetter[m].source
         ln = src.line   #this logic is compatible with 1.6 and 1.9 Ruby
         h[m] = src if (!ln or ln > 0) and src.file != "(eval)"
-      rescue TypeError  #Ruby 1.9 will raise this on missing source
+      rescue TypeError, ArgumentError  #on missing source
       end
     }
     h
   end
   private :sourceHash    
 
-  def singleton_source
+  def singleton_source(includeAll=false)
   # return hash on receiver's singleton methods to corresponding SourceRefs
-    sourceHash(:method, singleton_methods)
+    sourceHash(:method, singleton_methods(includeAll))
   end
   
   def instance_source(includeAncestors=false)
   # return hash on receiver's instance methods to corresponding SourceRefs
   #        optionally include accessible methods in ancestor classes
     sourceHash(:instance_method,
-                private_instance_methods+
+                private_instance_methods(includeAncestors)+
                 protected_instance_methods(includeAncestors)+
                 public_instance_methods(includeAncestors))
   end
@@ -315,17 +318,17 @@ class Module
   def source(*args)
   # return hash on receiver's methods to corresponding SourceRefs
   # note that instance_methods will overwrite singletons of the same name
-    singleton_source.update(instance_source(*args))
+    singleton_source(*args).update(instance_source(*args))
   end
   
-  def % (method_name)
+  def % method_name
   # return singleton method named method_name in module
   # Use / below unless method_name is also an instance method
     method method_name
   end
     
-  def / (method_name)
-  # return method named method_name in module
+  def / method_name
+  # return instance method named method_name in module
     begin
       return instance_method(method_name)
     rescue NameError
