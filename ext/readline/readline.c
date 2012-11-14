@@ -12,7 +12,7 @@
 #include <ctype.h>
 #include <string.h>
 #ifdef HAVE_READLINE_READLINE_H
-#include <readline/readline.h>  
+#include <readline/readline.h>
 extern char *rl_display_prompt;  /* missing and we need it */
 #endif
 #ifdef HAVE_READLINE_HISTORY_H
@@ -1001,14 +1001,14 @@ Init_readline()
     rb_define_singleton_method(mReadline, "buffer", readline_s_get_buffer, 0);
     rb_define_singleton_method(mReadline, "buffer=", readline_s_set_buffer, 1);
     rb_define_singleton_method(mReadline, "setBuffer",readline_s_set_buf2, -1);
-    rb_define_singleton_method(mReadline, "currentPrompt", 
+    rb_define_singleton_method(mReadline, "currentPrompt",
                                             readline_s_get_displayPrompt, 0);
 #ifdef HAVE_RL_EXPAND_PROMPT
-    rb_define_singleton_method(mReadline, "expandPrompt", 
+    rb_define_singleton_method(mReadline, "expandPrompt",
                                             readline_s_expand_prompt, 1);
 #endif
 #ifdef HAVE_RL_CHARACTER_LEN
-    rb_define_singleton_method(mReadline, "charLen", 
+    rb_define_singleton_method(mReadline, "charLen",
                                             readline_s_character_len, 2);
 #endif
     rb_define_singleton_method(mReadline, "done", readline_s_get_done, 0);
@@ -1017,7 +1017,7 @@ Init_readline()
     rb_define_singleton_method(mReadline, "end ",readline_s_set_end, 0);
     rb_define_singleton_method(mReadline, "point", readline_s_get_point, 0);
     rb_define_singleton_method(mReadline, "point=",readline_s_set_point, 0);
-                               
+
     history = rb_obj_alloc(rb_cObject);
     rb_extend_object(history, rb_mEnumerable);
     rb_define_singleton_method(history,"to_s", hist_to_s, 0);
