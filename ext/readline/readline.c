@@ -3,6 +3,8 @@
 
 // revised Oct 12, 2011 by brent@mbari.org
 //   allow other ruby threads to run while awaiting input
+// revised Nov 13, 2012 by brent@mbari.org
+//   added many more Readline API functions
 
 #include "config.h"
 #include <errno.h>
@@ -10,7 +12,8 @@
 #include <ctype.h>
 #include <string.h>
 #ifdef HAVE_READLINE_READLINE_H
-#include <readline/readline.h>
+#include <readline/readline.h>  
+extern char *rl_display_prompt;  /* missing and we need it */
 #endif
 #ifdef HAVE_READLINE_HISTORY_H
 #include <readline/history.h>
@@ -499,6 +502,196 @@ readline_s_get_filename_quote_characters(self, str)
 #endif /* HAVE_RL_FILENAME_QUOTE_CHARACTERS */
 }
 
+
+/***  Extended Readline API  ***/
+
+#ifdef HAVE_RL_VARIABLE_VALUE
+static VALUE
+readline_s_get_variable(self, name)
+    VALUE self, name;
+{
+    rb_secure(4);
+    SafeStringValue(name);
+    return rb_tainted_str_new2(rl_variable_value(RSTRING(name)->ptr));
+}
+#endif
+
+#ifdef HAVE_RL_VARIABLE_BIND
+static VALUE
+readline_s_set_variable(self, name, varVal)
+    VALUE self, name, varVal;
+{
+    rb_secure(4);
+    SafeStringValue(name);
+    SafeStringValue(varVal);
+    return INT2NUM(rl_variable_bind(RSTRING(name)->ptr, RSTRING(varVal)->ptr));
+}
+#endif
+
+#ifdef HAVE_RL_PARSE_AND_BIND
+static VALUE
+readline_s_parse_and_bind(self, line)
+    VALUE self, line;
+{
+    rb_secure(4);
+    SafeStringValue(line);
+    return INT2NUM(rl_parse_and_bind(RSTRING(line)->ptr));
+}
+#endif
+
+#ifdef HAVE_RL_GET_TERMCAP
+static VALUE
+readline_s_get_termcap(self, cap)
+    VALUE self, cap;
+{
+    SafeStringValue(cap);
+    return rb_tainted_str_new2(rl_get_termcap(RSTRING(cap)->ptr));
+}
+#endif
+
+#ifdef HAVE_RL_DING
+static VALUE
+readline_s_ding(self)
+    VALUE self;
+{
+    rl_ding();
+    return Qnil;
+}
+#endif
+
+#ifdef HAVE_RL_GET_STATE
+static VALUE
+readline_s_get_state(self)
+    VALUE self;
+{
+    return INT2NUM(rl_readline_state);
+}
+#endif
+
+static VALUE
+readline_s_get_version(self)
+    VALUE self;
+{
+    return INT2NUM(rl_readline_version);
+}
+
+static VALUE
+readline_s_get_buffer(self)
+    VALUE self;
+{
+    rb_secure(4);
+    return rb_tainted_str_new2(rl_line_buffer);
+}
+
+static VALUE
+setBuffer(self, line, clearUndo)
+    VALUE self, line, clearUndo;
+{
+    rb_secure(4);
+    SafeStringValue(line);
+    const char *newLine = RSTRING(line)->ptr;
+    rl_extend_line_buffer(strlen(newLine));
+    rl_replace_line(newLine, RTEST(clearUndo));
+    return line;
+}
+
+static VALUE
+readline_s_set_buffer(self, line)
+    VALUE self, line;
+{
+    return setBuffer(self, line, Qfalse);
+}
+
+static VALUE
+readline_s_set_buf2(argc, argv, self)
+    int argc;
+    VALUE *argv;
+    VALUE self;
+{
+    VALUE line, clearUndo = Qfalse;
+    rb_scan_args(argc, argv, "11", &line, &clearUndo);
+    return setBuffer(self, line, clearUndo);
+}
+
+
+static VALUE
+readline_s_get_done(self)
+    VALUE self;
+{
+    return rl_done ? Qtrue : Qfalse;
+}
+
+static VALUE
+readline_s_set_done(self, flag)
+    VALUE self, flag;
+{
+    rb_secure(4);
+    rl_done = RTEST(flag);
+    return flag;
+}
+
+static VALUE
+readline_s_get_end(self)
+    VALUE self;
+{
+    return INT2NUM(rl_end);
+}
+
+static VALUE
+readline_s_set_end(self, end)
+    VALUE self, end;
+{
+    rb_secure(4);
+    rl_end = NUM2INT(end);
+    return end;
+}
+
+static VALUE
+readline_s_get_point(self)
+    VALUE self;
+{
+    return INT2NUM(rl_point);
+}
+
+static VALUE
+readline_s_set_point(self, point)
+    VALUE self, point;
+{
+    rb_secure(4);
+    rl_end = NUM2INT(point);
+    return point;
+}
+
+static VALUE
+readline_s_get_displayPrompt(self)
+    VALUE self;
+{
+    rb_secure(4);
+    return rb_tainted_str_new2(rl_display_prompt);
+}
+
+#ifdef HAVE_RL_EXPAND_PROMPT
+static VALUE
+readline_s_expand_prompt(self, prompt)
+    VALUE self, prompt;
+{
+    SafeStringValue(prompt);
+    return INT2NUM(rl_expand_prompt(RSTRING(prompt)->ptr));
+}
+#endif
+
+#ifdef HAVE_RL_CHARACTER_LEN
+static VALUE
+readline_s_character_len(self, asciiCode, pos)
+    VALUE self, asciiCode, pos;
+{
+    return INT2NUM(rl_character_len(NUM2INT(asciiCode), NUM2INT(pos)));
+}
+#endif
+
+
+/****  History API  *****/
+
 static VALUE
 hist_to_s(self)
     VALUE self;
@@ -571,7 +764,7 @@ hist_push_method(argc, argv, self)
     VALUE self;
 {
     VALUE str;
-    
+
     rb_secure(4);
     while (argc--) {
 	str = *argv++;
@@ -786,6 +979,45 @@ Init_readline()
     rb_define_singleton_method(mReadline, "filename_quote_characters",
 			       readline_s_get_filename_quote_characters, 0);
 
+#ifdef HAVE_RL_VARIABLE_BIND
+    rb_define_singleton_method(mReadline, "[]=", readline_s_set_variable, 2);
+#endif
+#ifdef HAVE_RL_VARIABLE_VALUE
+    rb_define_singleton_method(mReadline, "[]", readline_s_get_variable, 1);
+#endif
+#ifdef READLINE_S_PARSE_AND_BIND
+    rb_define_singleton_method(mReadline, "bind", readline_s_parse_and_bind, 1);
+#endif
+#ifdef HAVE_RL_GET_TERMCAP
+    rb_define_singleton_method(mReadline, "termcap", readline_s_get_termcap, 1);
+#endif
+#ifdef HAVE_RL_DING
+    rb_define_singleton_method(mReadline, "ding", readline_s_ding, 0);
+#endif
+#ifdef HAVE_RL_GET_STATE
+    rb_define_singleton_method(mReadline, "state", readline_s_get_state, 0);
+#endif
+    rb_define_singleton_method(mReadline, "version", readline_s_get_version, 0);
+    rb_define_singleton_method(mReadline, "buffer", readline_s_get_buffer, 0);
+    rb_define_singleton_method(mReadline, "buffer=", readline_s_set_buffer, 1);
+    rb_define_singleton_method(mReadline, "setBuffer",readline_s_set_buf2, -1);
+    rb_define_singleton_method(mReadline, "currentPrompt", 
+                                            readline_s_get_displayPrompt, 0);
+#ifdef HAVE_RL_EXPAND_PROMPT
+    rb_define_singleton_method(mReadline, "expandPrompt", 
+                                            readline_s_expand_prompt, 1);
+#endif
+#ifdef HAVE_RL_CHARACTER_LEN
+    rb_define_singleton_method(mReadline, "charLen", 
+                                            readline_s_character_len, 2);
+#endif
+    rb_define_singleton_method(mReadline, "done", readline_s_get_done, 0);
+    rb_define_singleton_method(mReadline, "done=",readline_s_set_done, 1);
+    rb_define_singleton_method(mReadline, "end", readline_s_get_end, 0);
+    rb_define_singleton_method(mReadline, "end ",readline_s_set_end, 0);
+    rb_define_singleton_method(mReadline, "point", readline_s_get_point, 0);
+    rb_define_singleton_method(mReadline, "point=",readline_s_set_point, 0);
+                               
     history = rb_obj_alloc(rb_cObject);
     rb_extend_object(history, rb_mEnumerable);
     rb_define_singleton_method(history,"to_s", hist_to_s, 0);
