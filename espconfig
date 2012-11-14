@@ -5,7 +5,9 @@
 # to CFLAGS
 : ${CFLAGS:="-O2 -g -fno-stack-protector"}
 : ${CXXFLAGS:=$CFLAGS}
-[ -r Makefile ] && make MINIRUBY=miniruby distclean
+for mod in . mbarilib termios; do 
+  [ -r $mod/Makefile ] && make -C $mod MINIRUBY=miniruby distclean
+done
 export CC CFLAGS CXXFLAGS
 rm -f config.cache configure `find ext -name Makefile` && 
 autoconf && exec configure --prefix=/opt/mbari \
