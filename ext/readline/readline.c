@@ -1061,4 +1061,5 @@ Init_readline()
 #ifdef HAVE_RL_CLEAR_SIGNALS
     rl_clear_signals();
 #endif
+    rl_initialize();  /* ensure termcap calls work before first readline call */
 }
