@@ -4997,6 +4997,27 @@ rb_f_select(argc, argv, obj)
     return res;			/* returns an empty array on interrupt */
 }
 
+/*
+ *  call-seq:
+ *     IO.select_critical(read_array 
+ *               [, write_array 
+ *               [, error_array 
+ *               [, timeout]]] ) =>  array  or  nil
+ *  
+ *  Like <code>IO#select</code> but clears <code>Thread.critical</code>
+ */
+
+static VALUE
+rb_f_select_critical(argc, argv, obj)
+    int argc;
+    VALUE *argv;
+    VALUE obj;
+{
+    rb_thread_critical = 0;  /* exit any critical section before blocking */
+    return rb_f_select(argc, argv, obj);
+}
+
+
 #if !defined(MSDOS) && !defined(__human68k__)
 static int
 io_cntl(fd, cmd, narg, io_p)
@@ -5950,6 +5971,7 @@ Init_IO()
     rb_define_global_function("readline", rb_f_readline, -1);
     rb_define_global_function("getc", rb_f_getc, 0);
     rb_define_global_function("select", rb_f_select, -1);
+    rb_define_global_function("select!", rb_f_select_critical, -1);
 
     rb_define_global_function("readlines", rb_f_readlines, -1);
 
@@ -5971,6 +5993,7 @@ Init_IO()
     rb_define_singleton_method(rb_cIO, "readlines", rb_io_s_readlines, -1);
     rb_define_singleton_method(rb_cIO, "read", rb_io_s_read, -1);
     rb_define_singleton_method(rb_cIO, "select", rb_f_select, -1);
+    rb_define_singleton_method(rb_cIO, "select!", rb_f_select_critical, -1);
     rb_define_singleton_method(rb_cIO, "pipe", rb_io_s_pipe, 0);
 
     rb_define_method(rb_cIO, "initialize", rb_io_initialize, -1);

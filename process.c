@@ -1641,6 +1641,21 @@ rb_f_sleep(argc, argv)
     return INT2FIX(end);
 }
 
+/*
+ *  call-seq:
+ *     sleep!([duration])    => fixnum
+ *
+ *  Like sleep, but clears Thread.critical before stopping
+ */
+static VALUE
+rb_f_sleep_critical(argc, argv)
+    int argc;
+    VALUE *argv;
+{
+    rb_thread_critical=0;
+    return rb_f_sleep(argc, argv);
+}
+
 
 #if defined(SIGCLD) && !defined(SIGCHLD)
 # define SIGCHLD SIGCLD
@@ -3572,6 +3587,7 @@ Init_process()
     rb_define_global_function("exit!", rb_f_exit_bang, -1);
     rb_define_global_function("system", rb_f_system, -1);
     rb_define_global_function("sleep", rb_f_sleep, -1);
+    rb_define_global_function("sleep!", rb_f_sleep_critical, -1);
 
     rb_mProcess = rb_define_module("Process");
 
