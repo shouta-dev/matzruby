@@ -3,6 +3,7 @@
 # for gcc x86 add:
 #  -fno-stack-protector
 # to CFLAGS
+# also note that gcc 4.7 is not compatible.  Use gcc 4.6 or lower.
 : ${CFLAGS:="-O2 -g -fno-stack-protector"}
 : ${CXXFLAGS:=$CFLAGS}
 for mod in . mbarilib termios; do 
