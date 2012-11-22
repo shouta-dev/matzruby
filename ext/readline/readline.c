@@ -3,7 +3,7 @@
 
 // revised Oct 12, 2011 by brent@mbari.org
 //   allow other ruby threads to run while awaiting input
-// revised Nov 13, 2012 by brent@mbari.org
+// revised Nov 21, 2012 by brent@mbari.org
 //   added many more Readline API functions
 
 #include "config.h"
@@ -568,6 +568,43 @@ readline_s_get_state(self)
 }
 #endif
 
+#ifdef HAVE_RL_REDISPLAY
+static VALUE
+readline_s_redisplay(self)
+    VALUE self;
+{
+    rl_redisplay();
+    return self;
+}
+#endif
+
+#ifdef HAVE_RL_FORCED_UPDATE_DISPLAY
+static VALUE
+readline_s_display(self)
+    VALUE self;
+{
+    return INT2NUM(rl_forced_update_display());
+}
+#endif
+
+#ifdef HAVE_RL_ON_NEW_LINE
+static VALUE
+readline_s_new_line(self)
+    VALUE self;
+{
+    return INT2NUM(rl_on_new_line());
+}
+#endif
+
+#ifdef HAVE_RL_RESET_LINE_STATE
+static VALUE
+readline_s_reset_line(self)
+    VALUE self;
+{
+    return INT2NUM(rl_reset_line_state());
+}
+#endif
+
 static VALUE
 readline_s_get_version(self)
     VALUE self;
@@ -996,6 +1033,18 @@ Init_readline()
 #endif
 #ifdef HAVE_RL_GET_STATE
     rb_define_singleton_method(mReadline, "state", readline_s_get_state, 0);
+#endif
+#ifdef HAVE_RL_REDISPLAY
+    rb_define_singleton_method(mReadline, "redisplay", readline_s_redisplay, 0);
+#endif
+#ifdef HAVE_RL_FORCED_UPDATE_DISPLAY
+    rb_define_singleton_method(mReadline, "redisplay!", readline_s_display, 0);
+#endif
+#ifdef HAVE_RL_ON_NEW_LINE
+    rb_define_singleton_method(mReadline, "newLine", readline_s_new_line, 0);
+#endif
+#ifdef HAVE_RL_RESET_LINE_STATE
+    rb_define_singleton_method(mReadline, "newLine!", readline_s_reset_line, 0);
 #endif
     rb_define_singleton_method(mReadline, "version", readline_s_get_version, 0);
     rb_define_singleton_method(mReadline, "buffer", readline_s_get_buffer, 0);
