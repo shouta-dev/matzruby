@@ -252,14 +252,13 @@ class SourceRef   #combines source file name and line number
     Code::OPS.each{|m|define_method(m){|*args|SourceRef.doMethod(m,*args)}}
 
     def backtrace err=Thread.current  #default to this thread's most recent err
-      case err  #try to make whatever we're handed into an Exception
+      case err  #make whatever we're handed into something that backtraces
         when nil
           err = $lastErr
-        when Exception
         when Thread
           err = err.lastErr
         else
-          err = Thread[err].lastErr
+          err = Thread[err].lastErr unless err.respond_to? :backtrace
       end
       if err
         puts err.backtrace
