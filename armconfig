@@ -10,7 +10,7 @@
 : ${ARMHOST:=arm-softfloat-linux}
 : ${CC:=$ARMGCC/bin/gcc}
 : ${TARGETTOP:=${1-/opt/mbari}}
-for mod in . mbarilib termios; do 
+for mod in mbarilib termios .; do 
   [ -r $mod/Makefile ] && make -C $mod MINIRUBY=miniruby distclean
 done
 export CFLAGS CXXFLAGS
