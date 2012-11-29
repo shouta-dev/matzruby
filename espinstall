@@ -11,7 +11,8 @@ sudo chown $USER .installed.list || exit 2
   PATH=.:$PATH
   buildUtils clean all &&
   echo "Installing MBARI extensions..."  &&
-  sudo ruby inst-mbari.rb $DESTDIR
+  sudo ruby inst-mbari.rb $DESTDIR &&
+  sudo ./buildUtils install
 }
 
 
