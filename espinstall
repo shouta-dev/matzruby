@@ -1,9 +1,9 @@
 #!/bin/sh
-# install ruby 1.8.7p352 build for arm-linux -- 10/20/11 brent@mbari.org
+# install ruby 1.8.7p352 build for arm-linux -- 11/28/11 brent@mbari.org
 # also install modules needed for ESP unless 
 #   coreOnly environment variable is set
 #
-make -j4 all
+make -j4 all || exit 3
 sudo make install DESTDIR=$DESTDIR || exit 1
 sudo chown $USER .installed.list || exit 2
 [ -n "$coreOnly" ] || {
