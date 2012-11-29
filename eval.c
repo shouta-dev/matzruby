@@ -5643,10 +5643,30 @@ rb_rescue(b_proc, data1, r_proc, data2)
     return rb_rescue2(b_proc, data1, r_proc, data2, rb_eStandardError, (VALUE)0);
 }
 
-static VALUE cont_protect;
-
 VALUE
 rb_protect(proc, data, state)
+    VALUE (*proc) _((VALUE));
+    VALUE data;
+    int * volatile state;
+{
+    VALUE result = Qnil;
+    int status;
+
+    PUSH_TAG(PROT_NONE);
+    if ((status = EXEC_TAG()) == 0) {
+	result = (*proc)(data);
+    }
+    POP_TAG();
+    if (state) {
+	*state = status;
+    }
+    return result;
+}
+
+static VALUE cont_protect;  /*unique for each trap context*/
+
+static VALUE
+rb_trap_protect(proc, data, state)
     VALUE (*proc) _((VALUE));
     VALUE data;
     int * volatile state;
@@ -10566,7 +10586,7 @@ rb_trap_eval(cmd, sig, safe)
     THREAD_COPY_STATUS(curr_thread, &save);
     rb_thread_ready(curr_thread);
     PUSH_ITER(ITER_NOT);
-    val = rb_protect(run_trap_eval, (VALUE)&arg, &state);
+    val = rb_trap_protect(run_trap_eval, (VALUE)&arg, &state);
     POP_ITER();
     THREAD_COPY_STATUS(&save, curr_thread);
 
