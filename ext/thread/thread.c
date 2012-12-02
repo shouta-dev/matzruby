@@ -267,19 +267,6 @@ wait_list(List *list)
     return rb_ensure(wait_list_inner, (VALUE)list, wait_list_cleanup, (VALUE)list);
 }
 
-static void
-kill_waiting_threads(List *waiting)
-{
-    Entry *entry;
-
-    for (entry = waiting->entries; entry; entry = entry->next) {
-      /* don't kill thread that's slated to be finalized -- brent@mbari.org
-         Wouldn't it be better to raise a thread#exception here instead? */
-      if (TYPE(entry->value) == T_DATA)
-	rb_thread_kill(entry->value);
-    }
-}
-
 /*
  * Document-class: Mutex
  *
@@ -328,7 +315,6 @@ finalize_mutex(Mutex *mutex)
 static void
 free_mutex(Mutex *mutex)
 {
-    kill_waiting_threads(&mutex->waiting);
     finalize_mutex(mutex);
     xfree(mutex);
 }
@@ -621,7 +607,6 @@ finalize_condvar(ConditionVariable *condvar)
 static void
 free_condvar(ConditionVariable *condvar)
 {
-    kill_waiting_threads(&condvar->waiting);
     finalize_condvar(condvar);
     xfree(condvar);
 }
@@ -839,9 +824,6 @@ finalize_queue(Queue *queue)
 static void
 free_queue(Queue *queue)
 {
-    kill_waiting_threads(&queue->mutex.waiting);
-    kill_waiting_threads(&queue->space_available.waiting);
-    kill_waiting_threads(&queue->value_available.waiting);
     finalize_queue(queue);
     xfree(queue);
 }
