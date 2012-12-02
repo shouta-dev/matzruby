@@ -32,7 +32,7 @@ thread_exclusive(VALUE (*func)(ANYARGS), VALUE arg)
 /*
  *  call-seq:
  *     Thread.exclusive { block }   => obj
- *  
+ *
  *  Wraps a block in Thread.critical, restoring the original value
  *  upon exit from the critical section, and returns the value of the
  *  block.
@@ -273,6 +273,9 @@ kill_waiting_threads(List *waiting)
     Entry *entry;
 
     for (entry = waiting->entries; entry; entry = entry->next) {
+      /* don't kill thread that's slated to be finalized -- brent@mbari.org
+         Wouldn't it be better to raise a thread#exception here instead? */
+      if (TYPE(entry->value) == T_DATA)
 	rb_thread_kill(entry->value);
     }
 }
@@ -340,12 +343,12 @@ init_mutex(Mutex *mutex)
 /*
  * Document-method: new
  * call-seq: Mutex.new
- * 
+ *
  * Creates a new Mutex
  *
  */
 
-static VALUE 
+static VALUE
 rb_mutex_alloc(VALUE klass)
 {
     Mutex *mutex;
@@ -735,7 +738,7 @@ rb_condvar_broadcast(VALUE self)
     ConditionVariable *condvar;
 
     Data_Get_Struct(self, ConditionVariable, condvar);
-  
+
     thread_exclusive(wake_all, (VALUE)&condvar->waiting);
     rb_thread_schedule();
 
