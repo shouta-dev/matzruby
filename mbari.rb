@@ -22,28 +22,39 @@ if defined? Mutex and Mutex.instance_methods.include? :sleep
       (i=self[index]) && i.ord
     end
   end
-  
+
   class Hash
     def index value
       key value
     end
   end
 
-else  #need our 'C' extension for older ruby versions
+else  #probably need our 'C' extension for older ruby versions
 
   begin
-    require 'mbarilib'  #sundry 'C' extensions including Kernel.doze method
+    require 'mbarilib'  #Kernel.doze method
   rescue LoadError
-    STDOUT.puts "Warning:  missing mbarilib extension"
+    if Kernel.respond_to? :sleep!
+      STDERR.puts "Warning:  missing mbarilib extension -- doze == sleep!"
+      module Kernel
+        alias_method :doze, :sleep!
+      end
+    else
+      STDERR.puts "Warning:  missing mbarilib extension -- broken doze method"
+      def doze duration
+        Thread.critical=false
+        sleep duration
+      end
+    end
   end
-  
+
   class String
     def ord
       self[0]
     end
     alias_method :/, :[]
   end
-  
+
 end
 
 
@@ -63,13 +74,13 @@ class Module
       cs
     end
   end
-  
+
   private
   def rename_method newId,oldId
     alias_method newId, oldId unless respond_to? newId
   end
 end
- 
+
 class Hash
   def join (sep = " => ", m=:to_s)
   # most useful for displaying hashes with puts hsh.join
@@ -81,7 +92,7 @@ end
 
 class Object
   alias_method :klass, :class
-  
+
   def intern  #Symbol class overrides this. All classes respond to it
     self
   end
@@ -89,15 +100,15 @@ class Object
     eval "class << self; def intern; #{identifier.inspect}; end; end"
     identifier
   end
-  
+
   def deepCopy
     Marshal::load(Marshal::dump(dup))
   end
-  
+
   def reallyEqual? other  #for recursive equality tests
     self == other
   end
-  
+
   def with hash
   #assign instance variables specified in given hash
     hash.each do |parameter, value|
@@ -105,7 +116,7 @@ class Object
     end
     self
   end
-  
+
 end
 
 
@@ -140,5 +151,3 @@ class Fixnum
     self
   end
 end
-
-
