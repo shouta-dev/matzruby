@@ -5,6 +5,7 @@
 #   	$Date$
 #   	by Keiju ISHITSUKA(keiju@ishitsuka.com)
 #       From Original Idea of shugo@ruby-lang.org
+#       Revised:  12/10/12  brent@mbari.org
 #
 
 require "readline"
