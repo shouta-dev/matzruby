@@ -34,10 +34,11 @@ module IRB
       "yield",
     ]
       
-    CompletionProc = proc { |input|
-      bind = IRB.conf[:MAIN_CONTEXT].workspace.binding
+    CompletionProc = proc { |*arg|
+      input = arg[0]
+      bind = arg[1] || IRB.conf[:MAIN_CONTEXT].workspace.binding
       
-#      puts "input: #{input}"
+#puts "input: #{input}"
 
       case input
       when /^(\/[^\/]*\/)\.([^.]*)$/
@@ -174,7 +175,10 @@ module IRB
 	select_message(receiver, message, candidates)
 
       else
-	candidates = eval("methods | private_methods | local_variables | self.class.constants", bind)
+	candidates = eval(<<-END, bind)
+          methods | private_methods | local_variables | self.class.constants
+        END
+        candidates |= eval("Object.constants", bind) if self.class != Object
 			  
 	(candidates|ReservedWords).grep(/^#{Regexp.quote(input)}/)
       end
