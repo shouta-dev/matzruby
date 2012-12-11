@@ -1,5 +1,5 @@
 #
-#   irb/completor.rb - 
+#   irb/completor.rb -
 #   	$Release Version: 0.9$
 #   	$Revision$
 #   	$Date$
@@ -8,8 +8,6 @@
 #       Revised:  12/10/12  brent@mbari.org
 #
 
-require "readline"
-
 module IRB
   module InputCompletor
 
@@ -17,16 +15,16 @@ module IRB
 
     ReservedWords = [
       "BEGIN", "END",
-      "alias", "and", 
-      "begin", "break", 
+      "alias", "and",
+      "begin", "break",
       "case", "class",
       "def", "defined", "do",
       "else", "elsif", "end", "ensure",
-      "false", "for", 
-      "if", "in", 
-      "module", 
+      "false", "for",
+      "if", "in",
+      "module",
       "next", "nil", "not",
-      "or", 
+      "or",
       "redo", "rescue", "retry", "return",
       "self", "super",
       "then", "true",
@@ -34,11 +32,11 @@ module IRB
       "when", "while",
       "yield",
     ]
-      
+
     CompletionProc = proc { |*arg|
       input = arg[0]
       bind = arg[1] || IRB.conf[:MAIN_CONTEXT].workspace.binding
-      
+
 #puts "input: #{input}"
 
       case input
@@ -65,7 +63,7 @@ module IRB
 
 	candidates = Proc.instance_methods(true) | Hash.instance_methods(true)
 	select_message(receiver, message, candidates)
-	
+
       when /^(:[^:.]*)$/
  	# Symbol
 	if Symbol.respond_to?(:all_symbols)
@@ -137,7 +135,7 @@ module IRB
 	gv = eval("global_variables", bind)
 	lv = eval("local_variables", bind)
 	cv = eval("self.class.constants", bind)
-	
+
 	if (gv | lv | cv).include?(receiver)
 	  # foo.func and foo is local var.
 	  candidates = eval("#{receiver}.methods", bind)
@@ -157,7 +155,7 @@ module IRB
 	    rescue Exception
 	      name = ""
 	    end
-	    next if name != "IRB::Context" and 
+	    next if name != "IRB::Context" and
 	      /^(IRB|SLex|RubyLex|RubyToken)/ =~ name
 	    candidates.concat m.instance_methods(false)
 	  }
@@ -180,7 +178,7 @@ module IRB
           methods | private_methods | local_variables | self.class.constants
         END
         candidates |= eval("Object.constants", bind) if self.class != Object
-			  
+
 	(candidates|ReservedWords).grep(/^#{Regexp.quote(input)}/)
       end
     }
@@ -200,11 +198,14 @@ module IRB
 	end
       end
     end
+
+    def self.install
+      if Readline.respond_to?("basic_word_break_characters=")
+        Readline.basic_word_break_characters= " \t\n\"\\'`><=;|&{("
+      end
+      Readline.completion_append_character = nil
+      Readline.completion_proc = IRB::InputCompletor::CompletionProc
+    end
+    install if defined? Readline
   end
 end
-
-if Readline.respond_to?("basic_word_break_characters=")
-  Readline.basic_word_break_characters= " \t\n\"\\'`><=;|&{("
-end
-Readline.completion_append_character = nil
-Readline.completion_proc = IRB::InputCompletor::CompletionProc
