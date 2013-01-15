@@ -1,6 +1,6 @@
 ##################  sourceref.rb -- brent@mbari.org  #####################
 # $Source: /home/cvs/ESP/gen2/software/ruby/sourceref.rb,v $
-# $Id: sourceref.rb,v 1.34 2008/11/21 02:14:36 brent Exp $
+# $Id: sourceref.rb,v 1.35 2013/01/15 01:07:02 brent Exp $
 #
 #  The SourceRef class relies on a patched version of ruby/eval.c
 #  to provide access to the source file and line # where every Method
@@ -114,7 +114,7 @@ class SourceRef   #combines source file name and line number
       if lineno < firstLine
         raise $!,"Truncated ruby source file: #{self}"
       end
-    rescue
+    rescue Errno::ENOENT
       raise $!,"Missing ruby source: #{self}"
     end
     text.chomp!
@@ -344,17 +344,17 @@ class Module
 
   def reload(*args)
   # load all source files that define receiver's methods
-    sources(*args).each {|s| s.reload}
+    sources.each {|s| s.reload}
   end
 
   def edit(*args)
   # start editor sessions on all files that define receiver's methods
-    sources(*args).each{|srcFile| srcFile.edit(*args)}
+    sources.each{|srcFile| srcFile.edit(*args)}
   end
 
   def view(*args)
   # start read-only editor sessions on files containing receiver's methods
-    sources(*args).each{|srcFile| srcFile.view(*args)}
+    sources.each{|srcFile| srcFile.view(*args)}
   end
 
   def list(*args)
