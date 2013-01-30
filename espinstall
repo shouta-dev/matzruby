@@ -1,6 +1,6 @@
 #!/bin/sh
-# install ruby 1.8.7p352 build for arm-linux -- 11/28/11 brent@mbari.org
-# also install modules needed for ESP unless 
+# install ruby 1.8.7p352 build for arm-linux -- 1/29/13 brent@mbari.org
+# also install modules needed for ESP unless
 #   coreOnly environment variable is set
 #
 make -j4 all || exit 3
@@ -9,10 +9,9 @@ sudo chown $USER .installed.list || exit 2
 [ -n "$coreOnly" ] || {
   echo "   Installing extensions required by MBARI ESP:"
   PATH=.:$PATH
+  sudo rm -f termios/*.log termios/*.so
   buildUtils clean all &&
   echo "Installing MBARI extensions..."  &&
   sudo ruby inst-mbari.rb $DESTDIR &&
   sudo ./buildUtils install
 }
-
-
