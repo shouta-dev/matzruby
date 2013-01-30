@@ -9710,11 +9710,9 @@ method_call(argc, argv, method)
     if (data->recv == Qundef) {
 	rb_raise(rb_eTypeError, "can't call unbound method; bind first");
     }
-    if (OBJ_TAINTED(method)) {
-        safe = NOEX_WITH(data->safe_level, 4)|NOEX_TAINTED;
-    }
-    else {
-	safe = data->safe_level;
+    safe = data->safe_level;
+    if (safe>0 && OBJ_TAINTED(method)) {
+        safe = NOEX_WITH(safe, 4)|NOEX_TAINTED;
     }
     PUSH_ITER(rb_block_given_p()?ITER_PRE:ITER_NOT);
     result = rb_call0(data->klass,data->recv,data->id,data->oid,argc,argv,data->body,safe);
