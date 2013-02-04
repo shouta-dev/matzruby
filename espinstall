@@ -13,5 +13,6 @@ sudo chown $USER .installed.list || exit 2
   buildUtils clean all &&
   echo "Installing MBARI extensions..."  &&
   sudo ruby inst-mbari.rb $DESTDIR &&
-  sudo ./buildUtils install
+  sudo ./buildUtils install &&
+  sudo chown $USER termios/*.log termios/*.so
 }
