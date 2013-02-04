@@ -185,6 +185,7 @@ class SourceRef   #combines source file name and line number
     rescue LoadError
       raise $!, "Missing ruby source fle: #{file}"
     end
+    file
   end
 
 
