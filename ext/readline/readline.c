@@ -1063,7 +1063,7 @@ Init_readline()
     rb_define_singleton_method(mReadline, "done", readline_s_get_done, 0);
     rb_define_singleton_method(mReadline, "done=",readline_s_set_done, 1);
     rb_define_singleton_method(mReadline, "end", readline_s_get_end, 0);
-    rb_define_singleton_method(mReadline, "end ",readline_s_set_end, 0);
+    rb_define_singleton_method(mReadline, "end=",readline_s_set_end, 1);
     rb_define_singleton_method(mReadline, "point", readline_s_get_point, 0);
     rb_define_singleton_method(mReadline, "point=",readline_s_set_point, 0);
 
