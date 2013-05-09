@@ -1,11 +1,11 @@
 #
-#   irb/completor.rb -
+#   irb/completion.rb -
 #   	$Release Version: 0.9$
 #   	$Revision$
 #   	$Date$
 #   	by Keiju ISHITSUKA(keiju@ishitsuka.com)
 #       From Original Idea of shugo@ruby-lang.org
-#       Revised:  12/10/12  brent@mbari.org
+#       Revised:  5/8/13  brent@mbari.org
 #
 
 module IRB
@@ -124,7 +124,7 @@ module IRB
 	select_message(receiver, message, candidates)
 
       when /^(\$[^.]*)$/
-	candidates = global_variables.grep(Regexp.new(Regexp.quote($1)))
+	global_variables.grep(Regexp.new(Regexp.quote($1)))
 
 #      when /^(\$?(\.?[^.]+)+)\.([^.]*)$/
       when /^((\.?[^.]+)+)\.([^.]*)$/
@@ -132,7 +132,7 @@ module IRB
 	receiver = $1
 	message = Regexp.quote($3)
 
-	gv = eval("global_variables", bind)
+	gv = global_variables
 	lv = eval("local_variables", bind)
 	cv = eval("self.class.constants", bind)
 
@@ -200,8 +200,11 @@ module IRB
     end
 
     def self.install
-      if Readline.respond_to?("basic_word_break_characters=")
-        Readline.basic_word_break_characters= " \t\n\"\\'`><=;|&{("
+      if Readline.respond_to? :basic_word_break_characters=
+        Readline.basic_word_break_characters= c = " \t\n\"\\'`><=;|&{(+-*/"
+        if Readline.respond_to? :completer_word_break_characters=
+          Readline.completer_word_break_characters= c<<?@
+        end
       end
       Readline.completion_append_character = nil
       Readline.completion_proc = IRB::InputCompletor::CompletionProc
