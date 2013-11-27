@@ -14,6 +14,20 @@ Mon Oct 10 23:15:00 2011  Brent Roman  <brent@mbari.org>
         
         * fixed GCC 4.6 compile warnings in eval.c and gc.c
 
+Fri Mar  2 11:44:33 2012  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+        * marshal.c (mark_dump_arg): mark destination string.  patch by
+          Vit Ondruch.  [Bug #4339]
+
+        * marshal.c (clear_dump_arg, clear_load_arg): clean up also data
+          tables as same as symbols tables.
+
+Fri Mar  2 11:44:33 2012  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+        * marshal.c (struct {dump,load}_arg): manage with dfree, instead
+          of using local variable which may be moved by context switch.
+          [ruby-dev:39425]
+
 Fri Jul 22 11:20:20 2011  Martin Bosslet  <Martin.Bosslet@googlemail.com>
 
         * ext/openssl/ossl_digest.c: Check return value of EVP_DigestInit_ex.
