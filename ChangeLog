@@ -187,6 +187,11 @@ Fri May 20 23:06:31 2011  NAKAMURA, Hiroshi  <nahi@ruby-lang.org>
 	  accepts only Strings, so call Integer#to_s(16).
 	  16 is for an optimization. [ruby-dev:42336]
 
+Tue Mar  1 13:25:00 2011  Kenta Murata <mrkn@mrkn.jp>
+
+	* ext/bigdecimal/bigdecimal.c (VpMemAlloc): CVE-2011-0188.
+	  Fixes a bug reported by Drew Yao <ayao at apple.com>
+
 Fri Feb 18 21:18:55 2011  Shugo Maeda  <shugo@ruby-lang.org>
 
 	* test/ruby/test_exception.rb (TestException::test_to_s_taintness_propagation):
