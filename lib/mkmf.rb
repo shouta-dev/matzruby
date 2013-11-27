@@ -319,7 +319,7 @@ def link_command(ldflags, opt="", libpath=$DEFLIBPATH|$LIBPATH)
                               'LDFLAGS' => "#$LDFLAGS #{ldflags}",
                               'LIBPATH' => libpathflag(libpath),
                               'LOCAL_LIBS' => "#$LOCAL_LIBS #$libs",
-                              'LIBS' => "#$LIBRUBYARG_STATIC #{opt} #$LIBS")
+                              'LIBS' => "#$LIBRUBYARG_SHARED #{opt} #$LIBS")
   Config::expand(TRY_LINK.dup, conf)
 end
 
