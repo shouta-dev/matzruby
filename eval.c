@@ -198,9 +198,9 @@ static int volatile freebsd_clear_carry_flag = 0;
 #  endif
 #  define ruby_longjmp(env, val) rb_jump_context(env, val)
 #  define ruby_setjmp(just_before_setjmp, j) ((j)->status = 0, \
-     (just_before_setjmp), \
      PRE_GETCONTEXT, \
      getcontext(&(j)->context), \
+     (((j)->status)?:(just_before_setjmp)), \
      POST_GETCONTEXT, \
      (j)->status)
 #else
