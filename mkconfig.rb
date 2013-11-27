@@ -40,6 +40,7 @@ has_version = false
 has_patchlevel = false
 continued_name = nil
 continued_line = nil
+lib_64 = ''
 File.foreach "config.status" do |line|
   next if /^#/ =~ line
   name = nil
@@ -102,13 +103,21 @@ File.foreach "config.status" do |line|
     when "PATCHLEVEL"
       has_patchlevel = true
     end
+
+    # If the target architecture is one of the following,
+    #   ppc64 s390x sparc64 x86_64
+    # then use "lib64", not "lib" in prefix.
+    if name == "target_cpu" and (/64"$/ =~ val or val == '"s390x"')
+      lib_64 = '64'
+    end
   end
 #  break if /^CEOF/
 end
 
 drive = File::PATH_SEPARATOR == ';'
 
-prefix = '/lib/ruby/' + RUBY_VERSION.sub(/\.\d+$/, '') + '/' + RUBY_PLATFORM
+prefix = "/lib#{lib_64}/ruby/" \
+  + RUBY_VERSION.sub(/\.\d+$/, '') + '/' + RUBY_PLATFORM
 print "  TOPDIR = File.dirname(__FILE__).chomp!(#{prefix.dump})\n"
 print "  DESTDIR = ", (drive ? "TOPDIR && TOPDIR[/\\A[a-z]:/i] || " : ""), "'' unless defined? DESTDIR\n"
 print "  CONFIG = {}\n"
