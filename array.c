@@ -2954,7 +2954,7 @@ rb_ary_or(ary1, ary2)
  *     b.uniq!   #=> nil
  */
 
-static VALUE
+GCC_VISIBILITY_HIDDEN VALUE
 rb_ary_uniq_bang(ary)
     VALUE ary;
 {
@@ -2987,7 +2987,7 @@ rb_ary_uniq_bang(ary)
  *     a.uniq   #=> ["a", "b", "c"]
  */
 
-static VALUE
+GCC_VISIBILITY_HIDDEN VALUE
 rb_ary_uniq(ary)
     VALUE ary;
 {

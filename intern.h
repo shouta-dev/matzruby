@@ -18,6 +18,11 @@
  */
 
 #define ID_ALLOCATOR 1
+#ifdef __GNUC__
+#define GCC_VISIBILITY_HIDDEN __attribute__ ((visibility("hidden")))
+#else
+#define GCC_VISIBILITY_HIDDEN
+#endif
 
 /* array.c */
 void rb_mem_clear _((register VALUE*, register long));
@@ -44,6 +49,8 @@ VALUE rb_ary_print_on _((VALUE, VALUE));
 VALUE rb_ary_reverse _((VALUE));
 VALUE rb_ary_sort _((VALUE));
 VALUE rb_ary_sort_bang _((VALUE));
+GCC_VISIBILITY_HIDDEN VALUE rb_ary_uniq _((VALUE));
+GCC_VISIBILITY_HIDDEN VALUE rb_ary_uniq_bang _((VALUE));
 VALUE rb_ary_delete _((VALUE, VALUE));
 VALUE rb_ary_delete_at _((VALUE, long));
 VALUE rb_ary_clear _((VALUE));

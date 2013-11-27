@@ -338,6 +338,8 @@ ruby_init_loadpath()
     if (rb_safe_level() == 0) {
 	incpush(".");
     }
+
+    rb_load_path = rb_ary_uniq(rb_load_path);
 }
 
 struct req_list {
