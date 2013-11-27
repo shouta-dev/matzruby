@@ -144,4 +144,10 @@ class TestFloat < Test::Unit::TestCase
     assert_operator((-4611686018427387905.0).to_i, :<, 0)
     assert_operator((-4611686018427387906.0).to_i, :<, 0)
   end
+
+  def test_long_string
+    assert_normal_exit(<<-'end;')
+    assert_in_epsilon(10.0, ("1."+"1"*300000).to_f*9)
+    end;
+  end
 end
