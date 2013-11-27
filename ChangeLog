@@ -19,6 +19,12 @@ Fri Feb 22 18:31:46 2013  Aaron Patterson <aaron@tenderlovemaking.com>
 
         * lib/rexml/text.rb (REXML::Text.unnormalize): check above attribute.
 
+Fri Oct 12 12:25:15 2012  URABE Shyouhei  <shyouhei@ruby-lang.org>
+
+        * error.c (name_err_to_s): we need not infect msg.
+
+        * test/ruby/test_exception.rb (TestException#test_exception_to_s_should_not_propagate_untrustedness): test for it.
+
 Fri Mar  2 11:44:33 2012  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 
         * marshal.c (mark_dump_arg): mark destination string.  patch by
