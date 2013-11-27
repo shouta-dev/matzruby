@@ -8,6 +8,8 @@ if defined?(Readline) && !/EditLine/n.match(Readline::VERSION)
 require "test/unit"
 require "tempfile"
 
+ENV['TERM'] = 'dumb'
+
 class TestReadline < Test::Unit::TestCase
   def test_readline
     stdin = Tempfile.new("test_readline_stdin")
