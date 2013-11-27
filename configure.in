@@ -1826,6 +1826,8 @@ AC_SUBST(vendordir)dnl
 configure_args=$ac_configure_args
 AC_SUBST(configure_args)dnl
 
+target_cpu=`echo $target_cpu | sed s/i.86/i386/`
+
 if test "$fat_binary" != no ; then
     arch="fat-${target_os}"
 
