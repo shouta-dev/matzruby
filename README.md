@@ -1,4 +1,4 @@
-Ruby1.8.7p352 with MBARI8 / RHEL6's patch
+Ruby1.8.7p352 MBARI8 / RHEL6's patch
 ===
 
 Overview
@@ -6,7 +6,8 @@ Overview
 
 This ruby is a fork from [Ruby1.8.7p352 with MBARI8](https://github.com/brentr/matzruby/tree/v1_8_7_352-mbari).
 
-This fork have been applied patches from [RHEL6's SRPM](ftp://ftp.redhat.com/pub/redhat/linux/enterprise/6Client/en/os/SRPMS/ruby-1.8.7.352-13.el6.src.rpm).
+This fork have been applied patches from RHEL6's SRPM.
+* ftp://ftp.redhat.com/pub/redhat/linux/enterprise/6Client/en/os/SRPMS/ruby-1.8.7.352-13.el6.src.rpm
 
 Detail of patches
 ---
